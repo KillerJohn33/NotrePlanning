@@ -1,0 +1,13 @@
+{
+  "name": "Notre Planning",
+  "short_name": "Planning",
+  "description": "Plannings pro et perso partagés à deux",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6fa",
+  "theme_color": "#4f6bed",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

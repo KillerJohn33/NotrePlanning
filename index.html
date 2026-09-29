@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4f6bed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Notre Planning</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Écran de connexion -->
+<div id="auth" class="auth" hidden>
+  <div class="auth-card">
+    <div class="brand big"><img src="icon.svg" alt=""><span>Notre Planning</span></div>
+    <p class="muted">Vos plannings pro &amp; perso, chacun et ensemble.</p>
+    <div class="seg auth-tabs" id="authTabs">
+      <button type="button" data-mode="login" aria-pressed="true">Connexion</button>
+      <button type="button" data-mode="signup" aria-pressed="false">Créer un compte</button>
+    </div>
+    <form id="authForm" class="auth-form">
+      <label class="field" data-only="signup">Prénom<input name="name" autocomplete="given-name" maxlength="60"></label>
+      <label class="field">E-mail<input name="email" type="email" required autocomplete="email"></label>
+      <label class="field" data-only="login signup">Mot de passe<input name="password" type="password" minlength="6" autocomplete="current-password"></label>
+      <button class="btn primary block" type="submit" id="authSubmit">Se connecter</button>
+      <button type="button" class="link" id="forgotBtn">Mot de passe oublié ?</button>
+    </form>
+    <p id="authMsg" class="auth-msg" hidden></p>
+  </div>
+</div>
+
+<!-- Application -->
+<div id="app" hidden>
+  <header class="topbar">
+    <div class="brand"><img src="icon.svg" alt=""><span>Notre Planning</span></div>
+    <div class="nav">
+      <button class="icon-btn" id="prevBtn" aria-label="Précédent">‹</button>
+      <button class="btn" id="todayBtn">Aujourd’hui</button>
+      <button class="icon-btn" id="nextBtn" aria-label="Suivant">›</button>
+      <h1 id="period"></h1>
+    </div>
+    <div class="seg" id="viewSeg" role="group" aria-label="Affichage">
+      <button data-view="agenda">Agenda</button>
+      <button data-view="week">Semaine</button>
+      <button data-view="month">Mois</button>
+    </div>
+    <button class="icon-btn" id="settingsBtn" aria-label="Réglages">⚙</button>
+  </header>
+
+  <div class="filters">
+    <div class="seg" id="whoSeg" role="group" aria-label="Planning affiché"></div>
+    <div class="chips" id="catChips" role="group" aria-label="Types">
+      <button class="chip" data-cat="pro">💼 Pro</button>
+      <button class="chip" data-cat="perso">🏠 Perso</button>
+      <button class="chip" data-cat="commun">💞 Commun</button>
+    </div>
+    <span id="demoBanner" class="demo-banner" hidden>Mode démo : données enregistrées dans ce navigateur uniquement</span>
+  </div>
+
+  <main id="main" class="main"></main>
+  <button id="fab" class="fab" aria-label="Nouvel événement">+</button>
+</div>
+
+<!-- Événement -->
+<dialog id="eventDlg" aria-labelledby="evDlgTitle">
+  <form id="eventForm">
+    <div class="dlg-head">
+      <h2 id="evDlgTitle">Nouvel événement</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Fermer">✕</button>
+    </div>
+    <fieldset id="evFields" class="dlg-body">
+      <p id="evOwner" class="owner-note" hidden></p>
+      <input name="title" class="input title-input" placeholder="Titre" required maxlength="200" autocomplete="off" aria-label="Titre">
+      <div class="seg cat-seg" role="radiogroup" aria-label="Type">
+        <label><input type="radio" name="category" value="pro">💼 Pro</label>
+        <label><input type="radio" name="category" value="perso">🏠 Perso</label>
+        <label><input type="radio" name="category" value="commun">💞 Commun</label>
+      </div>
+      <label class="check"><input type="checkbox" name="all_day"> Toute la journée</label>
+      <div class="row">
+        <label class="field">Début<input type="date" name="start_date" required></label>
+        <label class="field time-field">Heure<input type="time" name="start_time"></label>
+      </div>
+      <div class="row">
+        <label class="field">Fin<input type="date" name="end_date" required></label>
+        <label class="field time-field">Heure<input type="time" name="end_time"></label>
+      </div>
+      <div class="row">
+        <label class="field">Répéter
+          <select name="recurrence">
+            <option value="none">Jamais</option>
+            <option value="daily">Tous les jours</option>
+            <option value="weekdays">Du lundi au vendredi</option>
+            <option value="weekly">Toutes les semaines</option>
+            <option value="monthly">Tous les mois</option>
+          </select>
+        </label>
+        <label class="field" id="untilRow">Jusqu’au (optionnel)<input type="date" name="recurrence_until"></label>
+      </div>
+      <p id="evSeriesNote" class="hint" hidden>↻ Événement répété : les modifications s’appliquent à toute la série.</p>
+      <label class="field">Lieu<input name="location" maxlength="200"></label>
+      <label class="field">Notes<textarea name="notes" rows="3" maxlength="4000"></textarea></label>
+      <label class="check" id="privateRow"><input type="checkbox" name="is_private"> 🔒 Privé : l’autre personne voit seulement « Occupé »</label>
+    </fieldset>
+    <div class="dlg-foot">
+      <button type="button" class="btn danger" id="evDelete">Supprimer</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close id="evCancel">Annuler</button>
+      <button type="submit" class="btn primary" id="evSave">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Réglages -->
+<dialog id="settingsDlg" aria-labelledby="setDlgTitle">
+  <div class="dlg-head">
+    <h2 id="setDlgTitle">Réglages</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Fermer">✕</button>
+  </div>
+  <div class="dlg-body" id="settingsBody"></div>
+</dialog>
+
+<div id="toast" class="toast" popover="manual" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="store.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
