@@ -376,5 +376,10 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
   .mo-ev span, .mo-more { display: none; }
   .agenda { padding: 4px 12px 100px; }
   .row { flex-wrap: wrap; }
-  dialog { --dlg-top: max(8px, env(safe-area-inset-top)); width: calc(100vw - 16px); max-width: calc(100vw - 16px); border-radius: 18px; }
+  /* Sur téléphone, le navigateur floute le haut de l'écran (heure, encoche) : on décale
+     tout le contenu sous cette zone. */
+  :root { --top-gap: calc(env(safe-area-inset-top, 0px) + 18px); }
+  .topbar { padding-top: var(--top-gap); }
+  .auth { padding-top: calc(var(--top-gap) + 12px); }
+  dialog { --dlg-top: var(--top-gap); width: calc(100vw - 16px); max-width: calc(100vw - 16px); border-radius: 18px; }
 }
