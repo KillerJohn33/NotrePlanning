@@ -81,6 +81,7 @@
     cats: savedUi.cats || { pro: true, perso: true, commun: true },
     cursor: startOfDay(new Date()),
     user: null, me: null, partner: null, household: null,
+    remote: { me: new Set(), partner: new Set() },
     events: [], range: null,
   };
   const saveUi = () => {
@@ -93,6 +94,32 @@
   const canEdit = ev => ev.is_mine || ev.category === 'commun';
   const isMasked = ev => !ev.is_mine && ev.is_private;
   const splitLanes = () => !!state.partner && state.who === 'both';
+
+  // Télétravail : qui (parmi les personnes affichées) télétravaille ce jour-là.
+  function remotePeople(date) {
+    const key = toDateInput(date);
+    const out = [];
+    if ((!state.partner || state.who !== 'partner') && state.remote.me.has(key)) {
+      out.push({ name: 'Moi', color: state.me?.color });
+    }
+    if (state.partner && state.who !== 'me' && state.remote.partner.has(key)) {
+      out.push({ name: state.partner.display_name, color: state.partner.color });
+    }
+    return out;
+  }
+  function remoteBadge(date, withLabel = false) {
+    const people = remotePeople(date);
+    if (!people.length) return '';
+    const title = `Télétravail : ${people.map(p => p.name).join(', ')}`;
+    const dots = state.partner ? people.map(p => `<i class="dot" style="--c:${esc(p.color)}"></i>`).join('') : '';
+    return withLabel
+      ? `<span class="tag tt-tag" title="${esc(title)}">💻 Télétravail ${dots}</span>`
+      : `<span class="tt" title="${esc(title)}" aria-label="${esc(title)}">💻${dots}</span>`;
+  }
+  // Un créneau pro d'un jour de télétravail prend l'icône 💻 au lieu de 💼.
+  const isRemoteWork = (ev, start) => ev.category === 'pro' && !ev.all_day
+    && state.remote[personOf(ev)].has(toDateInput(start));
+  const iconOf = (ev, start) => (isRemoteWork(ev, start) ? '💻' : CATS[ev.category].icon);
 
   function getRange() {
     if (state.view === 'week') {
@@ -141,6 +168,7 @@
     state.me = me;
     state.partner = partner;
     state.household = await store.getHousehold();
+    state.remote = await store.getRemoteDays();
   }
 
   function step(dir) {
@@ -228,7 +256,7 @@
     let html = `<div class="wk-scroll"><div class="wk-sticky"><div class="wk-row" style="grid-template-columns:${cols}"><div></div>`;
     for (const d of dates) {
       html += `<button class="wk-day ${sameDay(d, now) ? 'is-today' : ''}" data-goto="${toDateInput(d)}" title="Voir l’agenda de ce jour">
-        <span>${fmt(d, { weekday: 'short' })}</span><strong>${d.getDate()}</strong></button>`;
+        <span>${fmt(d, { weekday: 'short' })} ${remoteBadge(d)}</span><strong>${d.getDate()}</strong></button>`;
     }
     html += '</div>';
     if (split) {
@@ -297,7 +325,7 @@
     const tip = `${ev.title} · ${time}${state.partner ? ` · ${nameOf(ev)}` : ''}${ev.location ? ` · ${ev.location}` : ''}`;
     return `<button class="ev ${isMasked(ev) ? 'is-masked' : ''} ${short ? 'is-short' : ''}" data-ev="${ev.id}"
       style="top:${g.top}px;height:${g.height - 2}px;left:calc(${g.left}% + 2px);width:calc(${g.width}% - 4px);--c:${esc(colorOf(ev))}"
-      title="${esc(tip)}"><span class="ev-title">${CATS[ev.category].icon} ${esc(ev.title)}</span><span class="ev-time">${time}</span></button>`;
+      title="${esc(tip)}"><span class="ev-title">${iconOf(ev, o.start)} ${esc(ev.title)}</span><span class="ev-time">${time}</span></button>`;
   }
 
   function renderMonth(main) {
@@ -314,7 +342,7 @@
       const dEnd = addDays(d, 1);
       const items = occ.filter(o => o.start < dEnd && o.end > d);
       html += `<div class="mo-cell ${d.getMonth() !== month ? 'is-out' : ''} ${sameDay(d, today) ? 'is-today' : ''}" data-goto="${toDateInput(d)}">
-        <span class="mo-num">${d.getDate()}</span><div class="mo-events">`;
+        <div class="mo-top"><span class="mo-num">${d.getDate()}</span>${remoteBadge(d)}</div><div class="mo-events">`;
       for (const o of items.slice(0, max)) {
         const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
         html += `<button class="mo-ev" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}"><i></i><span>${time}${esc(o.ev.title)}</span></button>`;
@@ -357,7 +385,7 @@
         .filter(o => o.start < dEnd && o.end > d)
         .sort((a, b) => (b.ev.all_day - a.ev.all_day) || (a.start - b.start));
       html += `<section class="ag-day"><header class="ag-date"><span class="ag-dow">${fmt(d, { weekday: 'long' })}</span>
-        <span class="ag-dnum">${fmt(d, { day: 'numeric', month: 'long' })}</span>${sameDay(d, today) ? '<span class="badge">Aujourd’hui</span>' : ''}</header>`;
+        <span class="ag-dnum">${fmt(d, { day: 'numeric', month: 'long' })}</span>${sameDay(d, today) ? '<span class="badge">Aujourd’hui</span>' : ''}${remoteBadge(d, true)}</header>`;
       if (items.length) {
         html += '<div class="ag-list">' + items.map(o => agendaItem(o, d, dEnd)).join('') + '</div>';
       } else {
@@ -379,7 +407,9 @@
       : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
     const tags = [];
     if (state.partner) tags.push(ev.category === 'commun' ? '<span class="tag">💞 Ensemble</span>' : `<span class="tag"><span class="dot" style="--c:${esc(colorOf(ev))}"></span>${esc(nameOf(ev))}</span>`);
-    tags.push(`<span class="tag">${CATS[ev.category].icon} ${CATS[ev.category].label}</span>`);
+    tags.push(isRemoteWork(ev, o.start)
+      ? '<span class="tag">💻 Télétravail</span>'
+      : `<span class="tag">${CATS[ev.category].icon} ${CATS[ev.category].label}</span>`);
     if (ev.is_private) tags.push('<span class="tag">🔒 Privé</span>');
     if (ev.recurrence && ev.recurrence !== 'none') tags.push(`<span class="tag">↻ ${RECUR_LABEL[ev.recurrence]}</span>`);
     if (ev.location) tags.push(`<span class="tag">📍 ${esc(ev.location)}</span>`);
@@ -563,7 +593,8 @@
       <section class="set-section">
         <h3>Planning de travail</h3>
         <p class="muted">Importe le fichier Excel de ton planning pour remplir automatiquement tes journées, permanences et congés.</p>
-        <div><button class="btn" data-act="import">📥 Importer un fichier Excel</button></div>
+        <div><button class="btn" data-act="import">📥 Importer un fichier Excel</button>
+          <button class="btn" data-act="remote">💻 Jours de télétravail</button></div>
       </section>
       <section class="set-section">
         <h3>Compte</h3>
@@ -595,6 +626,9 @@
       } else if (act === 'import') {
         setDlg.close();
         return openImport();
+      } else if (act === 'remote') {
+        setDlg.close();
+        return openRemote();
       } else if (act === 'logout') {
         setDlg.close();
         return store.signOut();
@@ -627,6 +661,50 @@
         load();
       });
     }
+  }
+
+  /* Jours de télétravail --------------------------------------------------------------- */
+  const rmDlg = $('#remoteDlg');
+  let rmDraft = new Set();
+  let rmMonth = null;
+
+  function openRemote() {
+    rmDraft = new Set(state.remote.me);
+    rmMonth = new Date(state.cursor.getFullYear(), state.cursor.getMonth(), 1);
+    renderRemote();
+    rmDlg.showModal();
+  }
+
+  function renderRemote() {
+    $('#rmMonth').textContent = cap(fmt(rmMonth, { month: 'long', year: 'numeric' }));
+    const from = startOfWeek(rmMonth);
+    const today = toDateInput(new Date());
+    let html = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'].map(d => `<span class="rm-dow">${d}</span>`).join('');
+    for (let i = 0; i < 42; i++) {
+      const d = addDays(from, i);
+      if (i % 7 === 0 && i > 0 && d.getMonth() !== rmMonth.getMonth()) break;
+      const key = toDateInput(d);
+      const out = d.getMonth() !== rmMonth.getMonth();
+      html += `<button type="button" class="rm-day${out ? ' is-out' : ''}${key === today ? ' is-today' : ''}"
+        data-date="${key}" aria-pressed="${rmDraft.has(key)}" aria-label="${fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })}">${d.getDate()}</button>`;
+    }
+    $('#rmGrid').innerHTML = html;
+    const monthPrefix = toDateInput(rmMonth).slice(0, 7);
+    const inMonth = [...rmDraft].filter(k => k.startsWith(monthPrefix)).length;
+    const upcoming = [...rmDraft].filter(k => k >= today).length;
+    $('#rmCount').textContent = `${inMonth} jour${inMonth > 1 ? 's' : ''} ce mois-ci · ${upcoming} à venir au total`;
+  }
+
+  async function saveRemote() {
+    const cutoff = toDateInput(addDays(new Date(), -400)); // on ne garde pas l'historique ancien
+    const dates = [...rmDraft].filter(k => k >= cutoff).sort();
+    await withBusy($('#rmSave'), async () => {
+      await store.setRemoteDays(dates);
+      state.remote = await store.getRemoteDays();
+      rmDlg.close();
+      toast('Jours de télétravail enregistrés');
+      render();
+    });
   }
 
   /* Import du planning de travail ---------------------------------------------------- */
@@ -904,11 +982,23 @@
     setDlg.addEventListener('click', onSettingsClick);
     setDlg.addEventListener('submit', onSettingsSubmit);
 
+    $('#remoteBtn').onclick = openRemote;
+    $('#rmPrev').onclick = () => { rmMonth = new Date(rmMonth.getFullYear(), rmMonth.getMonth() - 1, 1); renderRemote(); };
+    $('#rmNext').onclick = () => { rmMonth = new Date(rmMonth.getFullYear(), rmMonth.getMonth() + 1, 1); renderRemote(); };
+    $('#rmGrid').onclick = e => {
+      const b = e.target.closest('[data-date]');
+      if (!b) return;
+      if (rmDraft.has(b.dataset.date)) rmDraft.delete(b.dataset.date);
+      else rmDraft.add(b.dataset.date);
+      renderRemote();
+    };
+    $('#rmSave').onclick = saveRemote;
+
     $('#impFile').addEventListener('change', onImportFile);
     impForm.addEventListener('change', renderImportPreview);
     impForm.addEventListener('submit', submitImport);
 
-    for (const dlg of [evDlg, setDlg, impDlg]) {
+    for (const dlg of [evDlg, setDlg, impDlg, rmDlg]) {
       dlg.addEventListener('click', e => {
         if (e.target === dlg || e.target.closest('[data-close]')) dlg.close();
       });
@@ -919,7 +1009,7 @@
     $('#authForm').addEventListener('submit', submitAuth);
 
     document.addEventListener('keydown', e => {
-      if (evDlg.open || setDlg.open || impDlg.open || $('#app').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (evDlg.open || setDlg.open || impDlg.open || rmDlg.open || $('#app').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.target.closest('input, textarea, select')) return;
       if (e.key === 'ArrowLeft') step(-1);
       else if (e.key === 'ArrowRight') step(1);

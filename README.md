@@ -53,6 +53,13 @@ une ligne par collaborateur, par jour et par demi-journée, avec les colonnes «
 - Le jour de repos habituel (absent au moins 80 % du temps, ex. le lundi) est ignoré. Les autres absences sont regroupées en événements « Congés ».
 - Réimporter remplace les événements déjà importés sur la période, sans créer de doublons. Les événements saisis à la main ne sont pas touchés.
 
+### Jours de télétravail
+
+Bouton **💻 Télétravail** (sous la barre du haut, ou dans ⚙ Réglages) : un calendrier où l'on coche ou décoche autant de jours que voulu,
+sur plusieurs mois, puis on enregistre. Ces jours sont stockés à part des événements (collection `remoteDays`), donc un réimport
+du planning Excel ne les efface pas. Ils s'affichent avec une icône 💻 sur la journée, et les créneaux pro de ces jours-là prennent l'icône 💻.
+Le partenaire relié les voit aussi.
+
 ### Sécurité
 
 Tout est contrôlé par [`firestore.rules`](firestore.rules). Les clés de `config.js` ne sont pas secrètes.

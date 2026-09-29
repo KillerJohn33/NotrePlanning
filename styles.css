@@ -283,6 +283,28 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .inline-form { display: flex; gap: 8px; }
 .inline-form .input { flex: 1; text-transform: uppercase; }
 
+/* Télétravail ----------------------------------------------------------------------- */
+.chip-action { color: var(--text); }
+.chip-action:hover { background: var(--surface-2); }
+.tt { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; line-height: 1; vertical-align: middle; }
+.tt .dot, .tt-tag .dot { width: 6px; height: 6px; }
+.tt-tag { font-size: 12px; font-weight: 500; }
+.mo-top { display: flex; align-items: center; gap: 4px; }
+.rm-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rm-nav strong { font-size: 16px; }
+.rm-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.rm-dow { text-align: center; font-size: 12px; color: var(--muted); text-transform: uppercase; padding: 2px 0; }
+.rm-day {
+  aspect-ratio: 1; min-height: 38px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); font-weight: 600; font-variant-numeric: tabular-nums;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+}
+.rm-day:hover { background: var(--surface-2); }
+.rm-day.is-out { opacity: .45; }
+.rm-day.is-today { outline: 2px solid var(--accent); outline-offset: -2px; }
+.rm-day[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+.rm-day[aria-pressed="true"]::after { content: "💻"; font-size: 11px; line-height: 1; }
+
 /* Import du planning ---------------------------------------------------------------- */
 #importDlg .dlg-body + form .dlg-body { padding-top: 0; }
 .field input[type="file"] { padding: 7px; }

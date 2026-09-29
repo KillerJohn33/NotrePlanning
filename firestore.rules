@@ -8,6 +8,7 @@ rules_version = '2';
 //   invites/{code}       code d'invitation : { from, accepted_by, created_at }
 //   events/{id}          événements ; un événement privé n'y contient ni titre, ni lieu, ni notes
 //   eventSecrets/{id}    détails des événements privés, lisibles par leur seul auteur
+//   remoteDays/{uid}     jours de télétravail
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -96,6 +97,14 @@ service cloud.firestore {
       allow delete: if signedIn()
         && (resource.data.owner_id == uid()
             || (resource.data.category == 'commun' && isMutualPartner(resource.data.owner_id)));
+    }
+
+    // Jours de télétravail : { dates: ["AAAA-MM-JJ", ...] }, visibles par le partenaire relié.
+    match /remoteDays/{userId} {
+      allow read: if signedIn() && (userId == uid() || isMutualPartner(userId));
+      allow write: if signedIn() && userId == uid()
+        && request.resource.data.keys().hasOnly(['dates'])
+        && request.resource.data.dates is list && request.resource.data.dates.size() <= 1000;
     }
 
     match /eventSecrets/{eventId} {

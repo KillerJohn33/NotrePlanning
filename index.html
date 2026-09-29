@@ -57,6 +57,7 @@
       <button class="chip" data-cat="perso">🏠 Perso</button>
       <button class="chip" data-cat="commun">💞 Commun</button>
     </div>
+    <button class="chip chip-action" id="remoteBtn" type="button">💻 Télétravail</button>
     <span id="demoBanner" class="demo-banner" hidden>Mode démo : données enregistrées dans ce navigateur uniquement</span>
   </div>
 
@@ -122,6 +123,29 @@
     <button type="button" class="icon-btn" data-close aria-label="Fermer">✕</button>
   </div>
   <div class="dlg-body" id="settingsBody"></div>
+</dialog>
+
+<!-- Jours de télétravail -->
+<dialog id="remoteDlg" aria-labelledby="rmDlgTitle">
+  <div class="dlg-head">
+    <h2 id="rmDlgTitle">💻 Mes jours de télétravail</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Fermer">✕</button>
+  </div>
+  <div class="dlg-body">
+    <p class="hint">Touche les jours pour les ajouter ou les retirer, sur autant de mois que tu veux, puis enregistre.</p>
+    <div class="rm-nav">
+      <button type="button" class="icon-btn" id="rmPrev" aria-label="Mois précédent">‹</button>
+      <strong id="rmMonth"></strong>
+      <button type="button" class="icon-btn" id="rmNext" aria-label="Mois suivant">›</button>
+    </div>
+    <div class="rm-grid" id="rmGrid"></div>
+    <p class="hint" id="rmCount"></p>
+  </div>
+  <div class="dlg-foot">
+    <span class="spacer"></span>
+    <button type="button" class="btn" data-close>Annuler</button>
+    <button type="button" class="btn primary" id="rmSave">Enregistrer</button>
+  </div>
 </dialog>
 
 <!-- Import du planning de travail -->

@@ -21,6 +21,7 @@
     const userRef = id => db.collection('users').doc(id);
     const inviteRef = code => db.collection('invites').doc(code);
     const secretRef = id => db.collection('eventSecrets').doc(id);
+    const remoteRef = id => db.collection('remoteDays').doc(id);
     const toMap = snap => new Map(snap.docs.map(d => [d.id, { id: d.id, ...d.data() }]));
     const onErr = err => console.error(err);
 
@@ -30,19 +31,21 @@
     let uid = null;
     let me = null, partner = null, invite = null;
     let myEvents = new Map(), partnerEvents = new Map(), secrets = new Map();
-    let baseUnsubs = [], partnerUnsub = null, partnerEventsUnsub = null, inviteUnsub = null;
+    let myRemote = [], partnerRemote = [];
+    let baseUnsubs = [], partnerUnsub = null, partnerDataUnsubs = null, inviteUnsub = null;
     let watchedPartner = null, watchedInvite = null;
     let pendingName = '';
 
     const isMutual = () => !!(me?.partner_id && partner && partner.id === me.partner_id && partner.partner_id === uid);
 
     function stopAll() {
-      [...baseUnsubs, partnerUnsub, partnerEventsUnsub, inviteUnsub].forEach(u => u && u());
+      [...baseUnsubs, partnerUnsub, inviteUnsub].forEach(u => u && u());
+      stopPartnerData();
       baseUnsubs = [];
-      partnerUnsub = partnerEventsUnsub = inviteUnsub = null;
+      partnerUnsub = inviteUnsub = null;
       watchedPartner = watchedInvite = null;
       me = partner = invite = null;
-      myEvents = new Map(); partnerEvents = new Map(); secrets = new Map();
+      myEvents = new Map(); secrets = new Map(); myRemote = [];
     }
 
     function watchMine() {
@@ -50,6 +53,7 @@
         userRef(uid).onSnapshot(s => { me = s.exists ? { id: s.id, ...s.data() } : null; syncLinks(); emit(); }, onErr),
         db.collection('events').where('owner_id', '==', uid).onSnapshot(s => { myEvents = toMap(s); emit(); }, onErr),
         db.collection('eventSecrets').where('owner_id', '==', uid).onSnapshot(s => { secrets = toMap(s); emit(); }, onErr),
+        remoteRef(uid).onSnapshot(s => { myRemote = (s.exists && s.data().dates) || []; emit(); }, onErr),
       );
     }
 
@@ -85,18 +89,26 @@
       }
     }
 
-    // Le planning du partenaire n'est lisible que si la liaison est réciproque.
+    // Le planning (et le télétravail) du partenaire n'est lisible que si la liaison est réciproque.
     function syncPartnerEvents() {
       const ok = isMutual();
-      if (ok && !partnerEventsUnsub) {
-        partnerEventsUnsub = db.collection('events').where('owner_id', '==', watchedPartner).onSnapshot(
-          s => { partnerEvents = toMap(s); emit(); },
-          () => { partnerEventsUnsub = null; partnerEvents = new Map(); emit(); });
-      } else if (!ok && partnerEventsUnsub) {
-        partnerEventsUnsub();
-        partnerEventsUnsub = null;
-        partnerEvents = new Map();
+      if (ok && !partnerDataUnsubs) {
+        const onDenied = () => { stopPartnerData(); emit(); };
+        partnerDataUnsubs = [
+          db.collection('events').where('owner_id', '==', watchedPartner)
+            .onSnapshot(s => { partnerEvents = toMap(s); emit(); }, onDenied),
+          remoteRef(watchedPartner)
+            .onSnapshot(s => { partnerRemote = (s.exists && s.data().dates) || []; emit(); }, onDenied),
+        ];
+      } else if (!ok && partnerDataUnsubs) {
+        stopPartnerData();
       }
+    }
+    function stopPartnerData() {
+      partnerDataUnsubs?.forEach(u => u());
+      partnerDataUnsubs = null;
+      partnerEvents = new Map();
+      partnerRemote = [];
     }
 
     // Finalise ou nettoie la liaison selon l'état (côté serveur) de l'invitation.
@@ -240,6 +252,11 @@
         if (secrets.has(id)) batch.delete(secretRef(id));
         await batch.commit();
       },
+      // Jours de télétravail : liste de dates "AAAA-MM-JJ" par personne.
+      async getRemoteDays() {
+        return { me: new Set(myRemote), partner: new Set(isMutual() ? partnerRemote : []) };
+      },
+      async setRemoteDays(dates) { await remoteRef(uid).set({ dates }); },
       countImported(key, from, to) {
         const [a, b] = [from.toISOString(), to.toISOString()];
         return [...myEvents.values()].filter(e => e.import_key === key && e.start_at >= a && e.start_at < b).length;
@@ -287,6 +304,10 @@
       const now = new Date();
       const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
       const at = (d, h, m = 0) => new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + d, h, m).toISOString();
+      const day = d => {
+        const x = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + d);
+        return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+      };
       const ev = (owner, o) => ({
         id: uid(), owner_id: owner, notes: null, location: null, all_day: false, is_private: false,
         recurrence: 'none', recurrence_until: null, ...o,
@@ -297,6 +318,7 @@
           partner: { id: 'partner', display_name: 'Ma compagne', color: '#e8590c', household_id: 'demo' },
         },
         household: { id: 'demo', invite_code: 'DEMO2026' },
+        remote: { me: [day(2), day(9)], partner: [day(4)] },
         events: [
           ev('me', { title: 'Travail', category: 'pro', start_at: at(0, 9), end_at: at(0, 17, 30), recurrence: 'weekdays', location: 'Bureau' }),
           ev('me', { title: 'Réunion d’équipe', category: 'pro', start_at: at(1, 14), end_at: at(1, 15), recurrence: 'weekly' }),
@@ -374,6 +396,16 @@
       },
       async deleteEvent(id) {
         db.events = db.events.filter(e => e.id !== id);
+        persist();
+      },
+      async getRemoteDays() {
+        return {
+          me: new Set(db.remote?.me || []),
+          partner: new Set(partnerLinked() ? db.remote?.partner || [] : []),
+        };
+      },
+      async setRemoteDays(dates) {
+        db.remote = { ...db.remote, me: dates };
         persist();
       },
       countImported(key, from, to) {
