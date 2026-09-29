@@ -26,7 +26,9 @@ service cloud.firestore {
 
     // Profils ---------------------------------------------------------------
     function validProfile(d) {
-      return d.keys().hasOnly(['display_name', 'color', 'partner_id', 'invite_code', 'work_name'])
+      return d.keys().hasOnly(['display_name', 'color', 'partner_id', 'invite_code', 'work_name', 'shift_types'])
+        // Types d'horaires personnels (ouverture, fermeture…) : au plus 12.
+        && (d.get('shift_types', null) == null || (d.shift_types is list && d.shift_types.size() <= 12))
         && d.display_name is string && d.display_name.size() <= 60
         && d.color is string && d.color.matches('^#[0-9a-fA-F]{6}$')
         && optStr(d, 'invite_code', 12)

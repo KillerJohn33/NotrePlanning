@@ -261,6 +261,20 @@
         const [a, b] = [from.toISOString(), to.toISOString()];
         return [...myEvents.values()].filter(e => e.import_key === key && e.start_at >= a && e.start_at < b).length;
       },
+      // Horaires placés sur plusieurs jours : supprime puis crée des créneaux en lots.
+      async applyShifts(deleteIds, events) {
+        const ops = [
+          ...deleteIds.filter(id => myEvents.has(id)).map(id => batch => batch.delete(db.collection('events').doc(id))),
+          ...events.map(ev => batch => batch.set(db.collection('events').doc(), {
+            ...pick(ev), owner_id: uid, updated_at: FieldValue.serverTimestamp(),
+          })),
+        ];
+        for (let i = 0; i < ops.length; i += 400) {
+          const batch = db.batch();
+          ops.slice(i, i + 400).forEach(op => op(batch));
+          await batch.commit();
+        }
+      },
       // Remplace les événements importés de la période par la nouvelle liste (lots de 400 écritures max).
       async replaceImported(key, from, to, events) {
         const [a, b] = [from.toISOString(), to.toISOString()];
@@ -413,6 +427,12 @@
       countImported(key, from, to) {
         return db.events.filter(e => e.owner_id === 'me' && e.import_key === key
           && new Date(e.start_at) >= from && new Date(e.start_at) < to).length;
+      },
+      async applyShifts(deleteIds, events) {
+        const del = new Set(deleteIds);
+        db.events = db.events.filter(e => !(e.owner_id === 'me' && del.has(e.id)));
+        events.forEach(ev => db.events.push({ id: uid(), owner_id: 'me', ...pick(ev) }));
+        persist();
       },
       async replaceImported(key, from, to, events) {
         const stale = e => e.owner_id === 'me' && e.import_key === key

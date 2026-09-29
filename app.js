@@ -160,8 +160,55 @@
   const dayRemoteNote = (d, items) => (items.some(o => isRemoteWork(o.ev, o.start)) ? '' : remoteBadge(d, true));
   // Congés : événement « journée » intitulé Congés… ou Vacances…
   const isOff = ev => ev.all_day && /^(cong|vacances)/.test(normTitle(ev.title));
+
+  // Jours fériés français (fêtes fixes + fêtes calculées depuis Pâques), mis en cache par année.
+  function easterSunday(y) {
+    const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4;
+    const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const n = h + l - 7 * m + 114;
+    return new Date(y, Math.floor(n / 31) - 1, (n % 31) + 1);
+  }
+  const holidayCache = new Map();
+  function holidayName(date) {
+    const y = date.getFullYear();
+    if (!holidayCache.has(y)) {
+      const p = easterSunday(y);
+      holidayCache.set(y, new Map([
+        [new Date(y, 0, 1), 'Jour de l’an'], [addDays(p, 1), 'Lundi de Pâques'], [new Date(y, 4, 1), 'Fête du Travail'],
+        [new Date(y, 4, 8), 'Victoire 1945'], [addDays(p, 39), 'Ascension'], [addDays(p, 50), 'Lundi de Pentecôte'],
+        [new Date(y, 6, 14), 'Fête nationale'], [new Date(y, 7, 15), 'Assomption'], [new Date(y, 10, 1), 'Toussaint'],
+        [new Date(y, 10, 11), 'Armistice'], [new Date(y, 11, 25), 'Noël'],
+      ].map(([d, name]) => [toDateInput(d), name])));
+    }
+    return holidayCache.get(y).get(toDateInput(date));
+  }
+  const holidayTag = d => { const h = holidayName(d); return h ? `<span class="tag hol-tag">${ic('flag')} ${esc(h)}</span>` : ''; };
+
+  // Types d'horaires (ouverture, milieu, fermeture…) propres à chaque profil ; les jours
+  // placés deviennent des créneaux pro marqués import_key = "shift:<id du type>".
+  const SHIFT_PREFIX = 'shift:';
+  const SHIFT_COLORS = ['#0ea5e9', '#f59e0b', '#8b5cf6', '#10b981', '#ef4444', '#64748b', '#ec4899', '#84cc16'];
+  const DEFAULT_SHIFTS = [
+    { id: 'ouv', name: 'Ouverture', start: '08:00', end: '16:00', color: '#0ea5e9' },
+    { id: 'mil', name: 'Milieu', start: '10:00', end: '18:00', color: '#f59e0b' },
+    { id: 'fer', name: 'Fermeture', start: '12:00', end: '20:00', color: '#8b5cf6' },
+  ];
+  const shiftTypes = () => (state.me?.shift_types?.length ? state.me.shift_types : DEFAULT_SHIFTS);
+  const shiftIdOf = ev => (ev.import_key?.startsWith(SHIFT_PREFIX) ? ev.import_key.slice(SHIFT_PREFIX.length) : null);
+  function shiftEvent(type, dateKey) {
+    const start = fromInputs(dateKey, type.start);
+    let end = fromInputs(dateKey, type.end);
+    if (end <= start) end = addDays(end, 1); // horaire de nuit
+    return {
+      title: type.name, category: 'pro', all_day: false, start_at: start.toISOString(), end_at: end.toISOString(),
+      notes: null, location: null, is_private: false, recurrence: 'none', recurrence_until: null,
+      import_key: SHIFT_PREFIX + type.id,
+    };
+  }
   const iconOf = (ev, start) => (isPerm(ev) ? ic('perm', 'i-perm')
-    : ic(isRemoteWork(ev, start) ? 'laptop' : (!isMasked(ev) && presetIcon(ev.title)) || CATS[ev.category].icon));
+    : ic(isRemoteWork(ev, start) ? 'laptop' : shiftIdOf(ev) ? 'clock'
+      : (!isMasked(ev) && presetIcon(ev.title)) || CATS[ev.category].icon));
 
   function getRange() {
     if (state.view === 'week') {
@@ -316,9 +363,6 @@
     $('#period').textContent = label;
 
     $$('#viewSeg [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
-    // L'onglet Télétravail n'apparaît que pour qui l'utilise (planning Excel importé ou jours saisis) ;
-    // il reste accessible pour tous depuis ⚙ Réglages.
-    $('#remoteBtn').hidden = !(state.me?.work_name || state.remote.me.size);
     $$('#catChips [data-cat]').forEach(b => b.setAttribute('aria-pressed', String(!!state.cats[b.dataset.cat])));
 
     const whoSeg = $('#whoSeg');
@@ -369,8 +413,9 @@
 
     let html = `<div class="wk-scroll"><div class="wk-sticky"><div class="wk-row" style="grid-template-columns:${cols}"><div class="wk-corner"></div>`;
     for (const d of dates) {
-      html += `<button class="wk-day ${sameDay(d, now) ? 'is-today' : ''}" data-goto="${toDateInput(d)}" title="Voir l’agenda de ce jour">
-        <span>${fmt(d, { weekday: 'short' })} ${remoteBadge(d)}${permBadge(d, occ)}</span><strong>${d.getDate()}</strong></button>`;
+      const hol = holidayName(d);
+      html += `<button class="wk-day ${sameDay(d, now) ? 'is-today' : ''} ${hol ? 'is-holiday' : ''}" data-goto="${toDateInput(d)}" title="${esc(hol || 'Détail du jour')}">
+        <span>${fmt(d, { weekday: 'short' })} ${remoteBadge(d)}${permBadge(d, occ)}</span><strong>${d.getDate()}</strong>${hol ? `<em class="hol">${esc(hol)}</em>` : ''}</button>`;
     }
     html += '</div>';
     if (split) {
@@ -496,8 +541,9 @@
         const all = byDay.get(toDateInput(d)) || [];
         const off = all.find(o => isOff(o.ev));
         const items = all.filter(o => !isOff(o.ev));
-        html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? 'is-off' : ''}" data-goto="${toDateInput(d)}">
-          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div>${offRibbon(off, d, day === nDays)}<div class="mo-events">`;
+        const hol = holidayName(d);
+        html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? 'is-off' : ''} ${hol ? 'is-holiday' : ''}" data-goto="${toDateInput(d)}"${hol ? ` title="${esc(hol)}"` : ''}>
+          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, d, day === nDays)}<div class="mo-events">`;
         for (const o of items.slice(0, max)) {
           const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
           html += `<button class="mo-ev" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}"><i></i><span>${time}${esc(o.ev.title)}</span></button>`;
@@ -555,7 +601,7 @@
         .filter(o => o.start < dEnd && o.end > d)
         .sort((a, b) => (b.ev.all_day - a.ev.all_day) || (a.start - b.start));
       html += `<section class="ag-day"><header class="ag-date"><span class="ag-dow">${fmt(d, { weekday: 'long' })}</span>
-        <span class="ag-dnum">${fmt(d, { day: 'numeric', month: 'long' })}</span>${sameDay(d, today) ? '<span class="badge">Aujourd’hui</span>' : ''}${dayRemoteNote(d, items)}</header>`;
+        <span class="ag-dnum">${fmt(d, { day: 'numeric', month: 'long' })}</span>${sameDay(d, today) ? '<span class="badge">Aujourd’hui</span>' : ''}${holidayTag(d)}${dayRemoteNote(d, items)}</header>`;
       if (items.length) {
         html += '<div class="ag-list">' + items.map(o => agendaItem(o, d, dEnd)).join('') + '</div>';
       } else {
@@ -581,7 +627,9 @@
     const remote = isRemoteWork(ev, o.start);
     if (perm) tags.push(`<span class="tag perm-tag">${ic('perm')} Permanence</span>`);
     if (remote) tags.push(`<span class="tag">${ic('laptop')} Télétravail</span>`);
-    if (!perm && !remote) tags.push(`<span class="tag tag-cat" data-cat="${ev.category}">${ic(CATS[ev.category].icon)} ${CATS[ev.category].label}</span>`);
+    const shift = !perm && shiftIdOf(ev);
+    if (shift) tags.push(`<span class="tag">${ic('clock')} Horaire</span>`);
+    if (!perm && !remote && !shift) tags.push(`<span class="tag tag-cat" data-cat="${ev.category}">${ic(CATS[ev.category].icon)} ${CATS[ev.category].label}</span>`);
     if (ev.is_private) tags.push(`<span class="tag">${ic('lock')} Privé</span>`);
     if (ev.recurrence && ev.recurrence !== 'none') tags.push(`<span class="tag">${ic('repeat')} ${RECUR_LABEL[ev.recurrence]}</span>`);
     if (ev.location) tags.push(`<span class="tag">${ic('pin')} ${esc(ev.location)}</span>`);
@@ -648,7 +696,7 @@
     $('#evSave').hidden = readOnly;
     $('#evCancel').textContent = readOnly ? 'Fermer' : 'Annuler';
     $('#evSeriesNote').hidden = !(ev.id && ev.recurrence !== 'none');
-    $('#evImportNote').hidden = !ev.import_key;
+    $('#evImportNote').hidden = ev.import_key !== PlanningImport.IMPORT_KEY;
     $('#privateRow').hidden = !state.partner && !ev.is_private;
     renderPresets(!ev.id);
     syncEventForm();
@@ -674,7 +722,7 @@
     const items = occ.sort((a, b) => (b.ev.all_day - a.ev.all_day) || (a.start - b.start));
     const year = d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {};
     $('#dayDlgTitle').textContent = cap(fmt(d, { weekday: 'long', day: 'numeric', month: 'long', ...year }));
-    const badges = `${sameDay(d, new Date()) ? '<span class="badge">Aujourd’hui</span>' : ''}${dayRemoteNote(d, items)}`;
+    const badges = `${sameDay(d, new Date()) ? '<span class="badge">Aujourd’hui</span>' : ''}${holidayTag(d)}${dayRemoteNote(d, items)}`;
     let html = badges ? `<div class="day-badges">${badges}</div>` : '';
     html += items.length
       ? `<div class="ag-list">${items.map(o => agendaItem(o, d, dEnd)).join('')}</div>`
@@ -825,6 +873,17 @@
       </section>
       <section class="set-section"><h3>Planning partagé</h3>${share}</section>
       <section class="set-section">
+        <h3>Types d’horaires</h3>
+        <p class="muted">Tes horaires habituels (ouverture, fermeture…). Place-les ensuite sur plusieurs jours d’un coup depuis l’onglet Horaires.</p>
+        <form id="shiftForm" class="shift-form">
+          <div id="shiftRows">${shiftTypes().map(shiftRow).join('')}</div>
+          <div class="btn-row">
+            <button type="button" class="btn" data-act="shift-add">${ic('plus')} Ajouter un type</button>
+            <button class="btn primary">Enregistrer</button>
+          </div>
+        </form>
+      </section>
+      <section class="set-section">
         <h3>Planning de travail</h3>
         <p class="muted">Importe le fichier Excel de ton planning pour remplir automatiquement tes journées, permanences et congés.</p>
         <div class="btn-row"><button class="btn" data-act="import">${ic('import')} Importer un fichier Excel</button>
@@ -850,7 +909,62 @@
     window.applyTheme(pref);
   }
 
+  // Une ligne éditable de type d'horaire (nom, début, fin).
+  function shiftRow(t) {
+    return `<div class="shift-row" data-id="${esc(t.id)}" data-color="${esc(t.color)}">
+      <span class="dot" style="--c:${esc(t.color)}"></span>
+      <input class="input" name="name" value="${esc(t.name)}" maxlength="30" required aria-label="Nom de l’horaire">
+      <input class="input" type="time" name="start" value="${esc(t.start)}" required aria-label="Début">
+      <input class="input" type="time" name="end" value="${esc(t.end)}" required aria-label="Fin">
+      <button type="button" class="icon-btn sm" data-act="shift-del" aria-label="Supprimer ce type">${ic('x')}</button>
+    </div>`;
+  }
+
+  async function saveShiftTypes(form) {
+    const types = $$('.shift-row', form).map(r => ({
+      id: r.dataset.id, color: r.dataset.color,
+      name: $('[name=name]', r).value.trim(), start: $('[name=start]', r).value, end: $('[name=end]', r).value,
+    }));
+    if (types.some(t => !t.name || !t.start || !t.end)) return toast('Indique un nom, un début et une fin pour chaque horaire.');
+    const before = new Map(shiftTypes().map(t => [t.id, t]));
+    await withBusy($('button:not([type])', form), async () => {
+      await store.updateMe({ shift_types: types });
+      // Les jours déjà planifiés (à partir d'aujourd'hui) suivent les nouveaux horaires.
+      const changed = types.filter(t => {
+        const o = before.get(t.id);
+        return o && (o.name !== t.name || o.start !== t.start || o.end !== t.end);
+      });
+      if (changed.length) {
+        const from = startOfDay(new Date());
+        const del = [], add = [];
+        for (const ev of await store.listEvents(from, addDays(from, 800))) {
+          const t = ev.is_mine && changed.find(c => c.id === shiftIdOf(ev));
+          if (!t || new Date(ev.start_at) < from) continue;
+          del.push(ev.id);
+          add.push(shiftEvent(t, toDateInput(new Date(ev.start_at))));
+        }
+        if (del.length) await store.applyShifts(del, add);
+      }
+      await loadProfiles();
+      toast('Types d’horaires enregistrés');
+      load();
+    });
+  }
+
   async function onSettingsClick(e) {
+    const shiftAct = e.target.closest('[data-act="shift-add"], [data-act="shift-del"]');
+    if (shiftAct) {
+      if (shiftAct.dataset.act === 'shift-del') shiftAct.closest('.shift-row').remove();
+      else {
+        const rows = $('#shiftRows', setDlg);
+        if (rows.children.length >= 12) return toast('12 types d’horaires au maximum.');
+        const used = new Set($$('.shift-row', rows).map(r => r.dataset.color));
+        const color = SHIFT_COLORS.find(c => !used.has(c)) || SHIFT_COLORS[0];
+        rows.insertAdjacentHTML('beforeend', shiftRow({ id: Math.random().toString(36).slice(2, 8), name: '', start: '09:00', end: '17:00', color }));
+        $('.shift-row:last-child [name=name]', rows).focus();
+      }
+      return;
+    }
     const themeBtn = e.target.closest('[data-theme-choice]');
     if (themeBtn) {
       setTheme(themeBtn.dataset.themeChoice);
@@ -879,7 +993,7 @@
         return openImport();
       } else if (act === 'remote') {
         setDlg.close();
-        return openRemote();
+        return openWork('remote');
       } else if (act === 'logout') {
         setDlg.close();
         return store.signOut();
@@ -903,6 +1017,8 @@
         toast('Profil enregistré');
         render();
       });
+    } else if (form.id === 'shiftForm') {
+      await saveShiftTypes(form);
     } else if (form.id === 'joinForm') {
       await withBusy($('button', form), async () => {
         await store.joinHousehold(form.elements.code.value);
@@ -914,19 +1030,51 @@
     }
   }
 
-  /* Jours de télétravail --------------------------------------------------------------- */
+  /* Mes horaires : placer types d'horaires et télétravail sur plusieurs jours ---------- */
   const rmDlg = $('#remoteDlg');
-  let rmDraft = new Set();
   let rmMonth = null;
+  let rmMode = null;              // id du type d'horaire en cours, ou 'remote'
+  let rmShowRemote = false;
+  let rmDraft = new Set();        // jours de télétravail
+  let rmShiftOrig = new Map();    // date -> { type, ids } tel qu'enregistré
+  let rmShiftDraft = new Map();   // date -> id du type (modifiable)
 
-  function openRemote() {
+  // Le télétravail n'est proposé qu'aux profils qui l'utilisent (ou à la demande depuis Réglages).
+  const usesRemote = () => !!(state.me?.work_name || state.remote.me.size);
+
+  async function openWork(mode) {
     rmDraft = new Set(state.remote.me);
     rmMonth = new Date(state.cursor.getFullYear(), state.cursor.getMonth(), 1);
-    renderRemote();
+    rmShowRemote = mode === 'remote' || usesRemote();
+    rmMode = mode || shiftTypes()[0]?.id || 'remote';
+    try {
+      // Créneaux d'horaires déjà placés (une large période autour d'aujourd'hui).
+      const from = addDays(startOfDay(new Date()), -400);
+      rmShiftOrig = new Map();
+      for (const ev of await store.listEvents(from, addDays(from, 1200))) {
+        const type = ev.is_mine && shiftIdOf(ev);
+        if (!type) continue;
+        const k = toDateInput(new Date(ev.start_at));
+        const cur = rmShiftOrig.get(k) || { type, ids: [] };
+        cur.ids.push(ev.id);
+        rmShiftOrig.set(k, cur);
+      }
+      rmShiftDraft = new Map([...rmShiftOrig].map(([k, v]) => [k, v.type]));
+    } catch (err) {
+      return toastError(err);
+    }
+    renderWork();
     rmDlg.showModal();
   }
 
-  function renderRemote() {
+  function renderWork() {
+    const types = shiftTypes();
+    const typeById = new Map(types.map(t => [t.id, t]));
+    $('#rmModes').innerHTML = types.map(t =>
+      `<button type="button" class="rm-mode" data-mode="${esc(t.id)}" style="--sc:${esc(t.color)}" aria-pressed="${rmMode === t.id}">
+        <span class="dot" style="--c:${esc(t.color)}"></span><b>${esc(t.name)}</b><small>${fmtHour(t.start)}–${fmtHour(t.end)}</small></button>`).join('')
+      + (rmShowRemote ? `<button type="button" class="rm-mode" data-mode="remote" style="--sc:var(--accent)" aria-pressed="${rmMode === 'remote'}">${ic('laptop')}<b>Télétravail</b></button>` : '');
+
     $('#rmMonth').textContent = cap(fmt(rmMonth, { month: 'long', year: 'numeric' }));
     const from = startOfWeek(rmMonth);
     const today = toDateInput(new Date());
@@ -935,26 +1083,66 @@
       const d = addDays(from, i);
       if (i % 7 === 0 && i > 0 && d.getMonth() !== rmMonth.getMonth()) break;
       const key = toDateInput(d);
-      const out = d.getMonth() !== rmMonth.getMonth();
-      html += `<button type="button" class="rm-day${out ? ' is-out' : ''}${key === today ? ' is-today' : ''}"
-        data-date="${key}" aria-pressed="${rmDraft.has(key)}" aria-label="${fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })}">${d.getDate()}${rmDraft.has(key) ? ic('laptop') : ''}</button>`;
+      const shift = typeById.get(rmShiftDraft.get(key));
+      const remote = rmDraft.has(key);
+      const pressed = rmMode === 'remote' ? remote : !!shift && shift.id === rmMode;
+      const hol = holidayName(d);
+      const cls = ['rm-day', d.getMonth() !== rmMonth.getMonth() && 'is-out', key === today && 'is-today',
+        shift && 'has-shift', hol && 'is-holiday'].filter(Boolean).join(' ');
+      html += `<button type="button" class="${cls}" data-date="${key}" aria-pressed="${pressed}"${shift ? ` style="--sc:${esc(shift.color)}"` : ''}
+        aria-label="${fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })}${shift ? ` : ${esc(shift.name)}` : ''}${hol ? ` (${esc(hol)})` : ''}">
+        ${d.getDate()}${shift ? `<small>${esc(shift.name.slice(0, 4))}</small>` : ''}${remote ? ic('laptop') : ''}</button>`;
     }
     $('#rmGrid').innerHTML = html;
+
     const monthPrefix = toDateInput(rmMonth).slice(0, 7);
-    const inMonth = [...rmDraft].filter(k => k.startsWith(monthPrefix)).length;
-    const upcoming = [...rmDraft].filter(k => k >= today).length;
-    $('#rmCount').textContent = `${inMonth} jour${inMonth > 1 ? 's' : ''} ce mois-ci · ${upcoming} à venir au total`;
+    if (rmMode === 'remote') {
+      const inMonth = [...rmDraft].filter(k => k.startsWith(monthPrefix)).length;
+      $('#rmCount').textContent = `Télétravail : ${inMonth} jour${inMonth > 1 ? 's' : ''} ce mois-ci`;
+    } else {
+      const counts = types.map(t => {
+        const n = [...rmShiftDraft].filter(([k, id]) => id === t.id && k.startsWith(monthPrefix)).length;
+        return `${t.name} ${n}`;
+      });
+      $('#rmCount').textContent = `Ce mois-ci : ${counts.join(' · ')}`;
+    }
   }
 
-  async function saveRemote() {
-    const cutoff = toDateInput(addDays(new Date(), -400)); // on ne garde pas l'historique ancien
-    const dates = [...rmDraft].filter(k => k >= cutoff).sort();
+  function toggleWorkDay(key) {
+    if (rmMode === 'remote') {
+      if (rmDraft.has(key)) rmDraft.delete(key);
+      else rmDraft.add(key);
+    } else if (rmShiftDraft.get(key) === rmMode) {
+      rmShiftDraft.delete(key);
+    } else {
+      rmShiftDraft.set(key, rmMode); // remplace un autre horaire éventuel ce jour-là
+    }
+    renderWork();
+  }
+
+  async function saveWork() {
     await withBusy($('#rmSave'), async () => {
-      await store.setRemoteDays(dates);
+      // Télétravail (seulement s'il a changé)
+      const remoteChanged = rmDraft.size !== state.remote.me.size || [...rmDraft].some(k => !state.remote.me.has(k));
+      if (remoteChanged) {
+        const cutoff = toDateInput(addDays(new Date(), -400)); // on ne garde pas l'historique ancien
+        await store.setRemoteDays([...rmDraft].filter(k => k >= cutoff).sort());
+      }
+      // Horaires : on supprime/crée uniquement les jours modifiés
+      const typeById = new Map(shiftTypes().map(t => [t.id, t]));
+      const del = [], add = [];
+      for (const k of new Set([...rmShiftOrig.keys(), ...rmShiftDraft.keys()])) {
+        const before = rmShiftOrig.get(k);
+        const after = rmShiftDraft.get(k);
+        if (before?.type === after) continue;
+        if (before) del.push(...before.ids);
+        if (after && typeById.has(after)) add.push(shiftEvent(typeById.get(after), k));
+      }
+      if (del.length || add.length) await store.applyShifts(del, add);
       state.remote = await store.getRemoteDays();
       rmDlg.close();
-      toast('Jours de télétravail enregistrés');
-      render();
+      toast('Horaires enregistrés');
+      load();
     });
   }
 
@@ -1268,17 +1456,20 @@
     setDlg.addEventListener('click', onSettingsClick);
     setDlg.addEventListener('submit', onSettingsSubmit);
 
-    $('#remoteBtn').onclick = openRemote;
-    $('#rmPrev').onclick = () => { rmMonth = new Date(rmMonth.getFullYear(), rmMonth.getMonth() - 1, 1); renderRemote(); };
-    $('#rmNext').onclick = () => { rmMonth = new Date(rmMonth.getFullYear(), rmMonth.getMonth() + 1, 1); renderRemote(); };
+    $('#remoteBtn').onclick = () => openWork();
+    $('#rmPrev').onclick = () => { rmMonth = new Date(rmMonth.getFullYear(), rmMonth.getMonth() - 1, 1); renderWork(); };
+    $('#rmNext').onclick = () => { rmMonth = new Date(rmMonth.getFullYear(), rmMonth.getMonth() + 1, 1); renderWork(); };
+    $('#rmModes').onclick = e => {
+      const b = e.target.closest('[data-mode]');
+      if (!b) return;
+      rmMode = b.dataset.mode;
+      renderWork();
+    };
     $('#rmGrid').onclick = e => {
       const b = e.target.closest('[data-date]');
-      if (!b) return;
-      if (rmDraft.has(b.dataset.date)) rmDraft.delete(b.dataset.date);
-      else rmDraft.add(b.dataset.date);
-      renderRemote();
+      if (b) toggleWorkDay(b.dataset.date);
     };
-    $('#rmSave').onclick = saveRemote;
+    $('#rmSave').onclick = saveWork;
 
     $('#impFile').addEventListener('change', onImportFile);
     impForm.addEventListener('change', renderImportPreview);

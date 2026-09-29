@@ -35,6 +35,7 @@
   --off: #eab308;
   --off-bg: #fef6c7;
   --off-text: #854d0e;
+  --hol: #dc2626;
 }
 /* Thème sombre : automatique (réglage de l'appareil) sauf si « Clair » est forcé,
    et toujours quand « Sombre » est forcé (bloc recopié plus bas). */
@@ -65,6 +66,7 @@
     --off: #facc15;
     --off-bg: #332d12;
     --off-text: #fde68a;
+    --hol: #f87171;
   }
 }
 :root[data-theme="dark"] {
@@ -93,6 +95,7 @@
   --off: #facc15;
   --off-bg: #332d12;
   --off-text: #fde68a;
+  --hol: #f87171;
 }
 
 * { box-sizing: border-box; }
@@ -607,4 +610,41 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 @media (max-width: 700px) {
   .off-bar { margin: 1px -4px 2px; height: 16px; font-size: 10px; padding: 0 4px; }
   .off-bar .i { display: none; }
+}
+
+/* Jours fériés */
+.hol { display: block; font-size: 10px; font-weight: 600; font-style: normal; color: var(--hol); line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mo-cell.is-holiday .mo-num, .wk-day.is-holiday span, .wk-day.is-holiday:not(.is-today) strong { color: var(--hol); }
+.mo-cell.is-holiday:not(.is-off) { background: color-mix(in srgb, var(--hol) 5%, var(--surface)); }
+.hol-tag { font-size: 12px; font-weight: 600; color: var(--hol); background: color-mix(in srgb, var(--hol) 11%, var(--surface-2)); }
+.rm-day.is-holiday { color: var(--hol); }
+
+/* Types d'horaires (Réglages) */
+.shift-form { display: flex; flex-direction: column; gap: 10px; }
+#shiftRows { display: flex; flex-direction: column; gap: 8px; }
+.shift-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) 92px 92px 34px; gap: 6px; align-items: center; }
+.shift-row .input { padding: 7px 8px; font-size: 14px; min-width: 0; }
+.icon-btn.sm { width: 34px; height: 34px; }
+.icon-btn.sm .i { width: 16px; height: 16px; }
+
+/* Mes horaires : choix du type puis jours */
+.rm-modes { display: flex; flex-wrap: wrap; gap: 6px; }
+.rm-mode {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+  border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 13px; color: var(--text);
+}
+.rm-mode small { color: var(--muted); font-size: 11px; }
+.rm-mode .i { width: 16px; height: 16px; color: var(--accent); }
+.rm-mode[aria-pressed="true"] { border-color: var(--sc); background: color-mix(in srgb, var(--sc) 14%, var(--surface)); }
+.rm-day small { font-size: 9px; font-weight: 700; line-height: 1; max-width: 100%; overflow: hidden; }
+.rm-day.has-shift { background: color-mix(in srgb, var(--sc) 20%, var(--surface)); border-color: color-mix(in srgb, var(--sc) 45%, transparent); }
+.rm-day.has-shift small { color: color-mix(in srgb, var(--sc) 75%, var(--text)); }
+.rm-day.has-shift[aria-pressed="true"] { background: var(--sc); border-color: var(--sc); color: #fff; }
+.rm-day.has-shift[aria-pressed="true"] small { color: #fff; }
+
+@media (max-width: 700px) {
+  .mo-cell .hol { display: none; }
+  .shift-row { grid-template-columns: 10px minmax(0, 1fr) 78px 78px 34px; gap: 4px; }
+  .shift-row .input { padding: 7px 5px; font-size: 13px; }
 }
