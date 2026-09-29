@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v27';
+  const APP_VERSION = 'v28';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -163,8 +163,12 @@
   }
   // Variables CSS des types (filtres, formulaire, étiquettes) mises à jour avec les réglages.
   function applyEventColorVars() {
+    const root = document.documentElement.style;
     const colors = eventColors();
-    for (const [cat, c] of Object.entries(colors)) document.documentElement.style.setProperty(`--ev-${cat}`, c);
+    for (const [cat, c] of Object.entries(colors)) root.setProperty(`--ev-${cat}`, c);
+    // Congés : couleur de profil de chacun (la même vue depuis les deux téléphones).
+    root.setProperty('--off-me', state.me?.color || '#3b82f6');
+    root.setProperty('--off-other', state.partner?.color || state.me?.color || '#ec4899');
   }
   // Couleur d'un événement : la sienne, sinon celle de son type d'horaire, sinon celle de son type.
   function colorOf(ev) {
@@ -628,12 +632,13 @@
       title="${esc(tip)}"><span class="ev-title">${iconOf(ev, o.start)} ${esc(ev.title)}</span><span class="ev-time">${time}</span></button>`;
   }
 
-  // Congés vus depuis cet appareil : les miens (et les « commun ») en jaune, ceux de l'autre en rose.
-  const offKindOf = ev => (ev.is_mine || ev.category === 'commun' ? 'mine' : 'partner');
+  // Congés dans la couleur de profil de la personne concernée (les « commun » : les deux).
+  const offKindOf = ev => (ev.category === 'commun' ? 'both' : ev.is_mine ? 'mine' : 'partner');
   // Qui est en congé ce jour-là : 'mine', 'partner', 'both' ou '' (d'après les occurrences du jour).
   function offKind(dayOccs) {
     const kinds = new Set(dayOccs.filter(o => isOff(o.ev)).map(o => offKindOf(o.ev)));
-    return kinds.size === 2 ? 'both' : [...kinds][0] || '';
+    if (kinds.has('both') || (kinds.has('mine') && kinds.has('partner'))) return 'both';
+    return [...kinds][0] || '';
   }
   const offClass = kind => (kind === 'partner' ? ' is-partner' : kind === 'both' ? ' is-both' : '');
 
@@ -645,7 +650,7 @@
     const last = !nextKind || lastOfMonth || d.getDay() === 0;
     const showLabel = first || d.getDay() === 1 || d.getDate() === 1 || prevKind !== kind;
     const partner = state.partner?.display_name || 'l’autre';
-    const label = kind === 'both' ? 'Congés · vous deux' : kind === 'partner' ? `Congés · ${partner}` : title;
+    const label = kind === 'both' ? (state.partner ? 'Congés · vous deux' : title) : kind === 'partner' ? `Congés · ${partner}` : title;
     return `<div class="off-bar${offClass(kind)}${first ? ' is-first' : ''}${last ? ' is-last' : ''}" title="${esc(label)}">`
       + (showLabel ? `${ic('sun')}<span>${esc(label)}</span>` : '') + '</div>';
   }
@@ -682,7 +687,7 @@
         const all = byDay.get(toDateInput(d)) || [];
         const kindOn = date => offKind(byDay.get(toDateInput(date)) || []);
         const off = kindOn(d);
-        const offTitle = all.find(o => isOff(o.ev) && offKindOf(o.ev) === 'mine')?.ev.title || 'Congés';
+        const offTitle = all.find(o => isOff(o.ev) && offKindOf(o.ev) !== 'partner')?.ev.title || 'Congés';
         const items = all.filter(o => !isOff(o.ev));
         const hol = holidayName(d);
         // Vacances scolaires : simple trait coloré en bas de la case (sans prendre de place).

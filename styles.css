@@ -35,9 +35,6 @@
   --off: #eab308;
   --off-bg: #fef6c7;
   --off-text: #854d0e;
-  --off-partner: #f472b6;
-  --off-partner-bg: #fde7f3;
-  --off-partner-text: #9d174d;
   --hol: #dc2626;
   --school: #0d9488;
   --school-bg: #ccfbf1;
@@ -71,9 +68,6 @@
     --off: #facc15;
     --off-bg: #332d12;
     --off-text: #fde68a;
-    --off-partner: #f472b6;
-    --off-partner-bg: #3a1c2d;
-    --off-partner-text: #fbcfe8;
     --hol: #f87171;
     --school: #2dd4bf;
     --school-bg: #123a37;
@@ -105,9 +99,6 @@
   --off: #facc15;
   --off-bg: #332d12;
   --off-text: #fde68a;
-  --off-partner: #f472b6;
-  --off-partner-bg: #3a1c2d;
-  --off-partner-text: #fbcfe8;
   --hol: #f87171;
   --school: #2dd4bf;
   --school-bg: #123a37;
@@ -599,23 +590,6 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .perm-tag .dot { width: 6px; height: 6px; }
 .i.i-perm { color: var(--perm); stroke-width: 2.4; }
 
-/* Congés : jaune sur toute la période */
-.mo-cell.is-off, .mo-cell.is-off:hover { background: var(--off-bg); }
-.off-bar {
-  align-self: stretch; margin: 1px -5px 2px; height: 18px; padding: 0 6px;
-  display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap;
-  background: var(--off); color: #422006; font-size: 11px; font-weight: 700;
-}
-.off-bar.is-first { margin-left: 2px; border-top-left-radius: 9px; border-bottom-left-radius: 9px; }
-.off-bar.is-last { margin-right: 2px; border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
-.off-bar .i { width: 12px; height: 12px; stroke-width: 2.4; flex: none; }
-.off-bar span { overflow: hidden; text-overflow: ellipsis; }
-.wk-col.is-off { background-color: var(--off-bg); }
-.chip-ev.is-off { background: var(--off); border-left-color: var(--off); color: #422006; font-weight: 700; }
-.chip-ev.is-off .i { color: #422006; }
-.ag-ev.is-off { background: var(--off-bg); border-color: color-mix(in srgb, var(--off) 45%, transparent); }
-.ag-ev.is-off .ag-bar { background: var(--off); }
-.ag-ev.is-off strong { color: var(--off-text); }
 
 @media (max-width: 700px) {
   .off-bar { margin: 1px -4px 2px; height: 16px; font-size: 10px; padding: 0 4px; }
@@ -778,18 +752,45 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .cat-colors-label { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; }
 .cat-colors-label .i { color: var(--cc); }
 
-/* Congés de l'autre personne : rose (les miens restent jaunes) ; les deux : moitié-moitié */
-.mo-cell.is-off.is-partner, .mo-cell.is-off.is-partner:hover { background: var(--off-partner-bg); }
-.mo-cell.is-off.is-both, .mo-cell.is-off.is-both:hover { background: linear-gradient(180deg, var(--off-bg) 50%, var(--off-partner-bg) 50%); }
-.off-bar.is-partner { background: var(--off-partner); color: #500724; }
-.off-bar.is-both { background: linear-gradient(180deg, var(--off) 50%, var(--off-partner) 50%); color: #3b0a1f; }
-.wk-col.is-off.is-partner { background-color: var(--off-partner-bg); }
+
+/* Congés : couleur de profil de la personne (--off-me : moi, --off-other : l'autre,
+   définies par app.js) ; les deux le même jour (ou « commun ») : moitié-moitié. */
+:root {
+  --offme-bg: color-mix(in srgb, var(--off-me, #3b82f6) 16%, var(--surface));
+  --offother-bg: color-mix(in srgb, var(--off-other, #ec4899) 16%, var(--surface));
+}
+.mo-cell.is-off, .mo-cell.is-off:hover { background: var(--offme-bg); }
+.mo-cell.is-off.is-partner, .mo-cell.is-off.is-partner:hover { background: var(--offother-bg); }
+.mo-cell.is-off.is-both, .mo-cell.is-off.is-both:hover { background: linear-gradient(180deg, var(--offme-bg) 50%, var(--offother-bg) 50%); }
+.off-bar {
+  align-self: stretch; margin: 1px -5px 2px; height: 18px; padding: 0 6px;
+  display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap;
+  background: var(--off-me); color: #fff; font-size: 11px; font-weight: 700; text-shadow: 0 1px 1px rgba(0, 0, 0, .2);
+}
+.off-bar.is-partner { background: var(--off-other); }
+.off-bar.is-both { background: linear-gradient(180deg, var(--off-me) 50%, var(--off-other) 50%); }
+.off-bar.is-first { margin-left: 2px; border-top-left-radius: 9px; border-bottom-left-radius: 9px; }
+.off-bar.is-last { margin-right: 2px; border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
+.off-bar .i { width: 12px; height: 12px; stroke-width: 2.4; flex: none; }
+.off-bar span { overflow: hidden; text-overflow: ellipsis; }
+.wk-col.is-off { background-color: var(--offme-bg); }
+.wk-col.is-off.is-partner { background-color: var(--offother-bg); }
 .wk-col.is-off.is-both {
-  background-image: linear-gradient(to bottom, var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--off-bg) 50%, var(--off-partner-bg) 50%);
+  background-image: linear-gradient(to bottom, var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--offme-bg) 50%, var(--offother-bg) 50%);
   background-size: 100% var(--hour), 100% 100%;
 }
-.chip-ev.is-off.is-partner { background: var(--off-partner); border-left-color: var(--off-partner); color: #500724; }
-.chip-ev.is-off.is-partner .i { color: #500724; }
-.ag-ev.is-off.is-partner { background: var(--off-partner-bg); border-color: color-mix(in srgb, var(--off-partner) 45%, transparent); }
-.ag-ev.is-off.is-partner .ag-bar { background: var(--off-partner); }
-.ag-ev.is-off.is-partner strong { color: var(--off-partner-text); }
+.chip-ev.is-off { background: var(--off-me); border-left-color: var(--off-me); color: #fff; font-weight: 700; }
+.chip-ev.is-off.is-partner { background: var(--off-other); border-left-color: var(--off-other); }
+.chip-ev.is-off.is-both { background: linear-gradient(180deg, var(--off-me) 50%, var(--off-other) 50%); border-left-color: var(--off-me); }
+.chip-ev.is-off .i { color: #fff; }
+.ag-ev.is-off { background: var(--offme-bg); border-color: color-mix(in srgb, var(--off-me) 40%, transparent); }
+.ag-ev.is-off .ag-bar { background: var(--off-me); }
+.ag-ev.is-off.is-partner { background: var(--offother-bg); border-color: color-mix(in srgb, var(--off-other) 40%, transparent); }
+.ag-ev.is-off.is-partner .ag-bar { background: var(--off-other); }
+.ag-ev.is-off.is-both { background: linear-gradient(90deg, var(--offme-bg), var(--offother-bg)); }
+.ag-ev.is-off.is-both .ag-bar { background: linear-gradient(180deg, var(--off-me) 50%, var(--off-other) 50%); }
+
+@media (max-width: 700px) {
+  .off-bar { margin: 1px -4px 2px; height: 16px; font-size: 10px; padding: 0 4px; }
+  .off-bar .i { display: none; }
+}
