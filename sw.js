@@ -1,5 +1,5 @@
 /* Cache de l'interface uniquement : les données passent toujours par le réseau. */
-const CACHE = 'notre-planning-v17';
+const CACHE = 'notre-planning-v18';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'store.js', 'import.js', 'config.js', 'icon.svg', 'apple-touch-icon.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', event => {

@@ -889,6 +889,7 @@
         <div class="btn-row"><button class="btn" data-act="import">${ic('import')} Importer un fichier Excel</button>
           <button class="btn" data-act="remote">${ic('laptop')} Jours de télétravail</button></div>
       </section>
+      ${installSection()}
       <section class="set-section">
         <h3>Compte</h3>
         <p class="muted">${esc(state.user?.email)}</p>
@@ -907,6 +908,23 @@
   function setTheme(pref) {
     try { localStorage.setItem(THEME_KEY, pref); } catch { /* ignoré */ }
     window.applyTheme(pref);
+  }
+
+  // Installation sur l'écran d'accueil : bouton natif sur Android / Chrome, mode d'emploi sur iPhone.
+  let installPrompt = null;
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; });
+  addEventListener('appinstalled', () => { installPrompt = null; toast('Application installée'); });
+  const isInstalled = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  function installSection() {
+    if (isInstalled()) return '';
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const body = installPrompt
+      ? `<div><button class="btn primary" data-act="install">${ic('import')} Installer l’application</button></div>`
+      : ios
+        ? '<p class="muted">Dans Safari, touche Partager puis « Sur l’écran d’accueil ».</p>'
+        : '<p class="muted">Dans le menu du navigateur (⋮), choisis « Installer l’application » ou « Ajouter à l’écran d’accueil ».</p>';
+    return `<section class="set-section"><h3>Application</h3>
+      <p class="muted">Installe Notre Planning sur ton écran d’accueil pour l’ouvrir comme une vraie application.</p>${body}</section>`;
   }
 
   // Une ligne éditable de type d'horaire (nom, début, fin).
@@ -994,6 +1012,11 @@
       } else if (act === 'remote') {
         setDlg.close();
         return openWork('remote');
+      } else if (act === 'install') {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        await installPrompt.userChoice;
+        installPrompt = null;
       } else if (act === 'logout') {
         setDlg.close();
         return store.signOut();
