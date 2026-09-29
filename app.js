@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v30';
+  const APP_VERSION = 'v31';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -30,6 +30,7 @@
     { title: 'Anniversaire', icon: 'cake', cat: 'commun', allDay: true, yearly: true },
     { title: 'Vacances', icon: 'plane', cat: 'commun', allDay: true },
     { title: 'Réunion', icon: 'pro', cat: 'pro', min: 60 },
+    { title: 'Formation', icon: 'training', cat: 'pro', min: 420 },
   ];
   const normTitle = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   // Icône d'une suggestion si le titre commence par son nom (« Médecin – Dr X » → stéthoscope).
