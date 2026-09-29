@@ -23,8 +23,10 @@ service cloud.firestore {
     function isMutualPartner(other) {
       return other != uid() && myPartner() == other && userData(other).get('partner_id', null) == uid();
     }
+    // Champ texte facultatif : absent, vide (null) ou texte de `max` caractères au plus.
+    // d.get(…) et non d[key] : lire un champ absent ferait échouer toute la règle.
     function optStr(d, key, max) {
-      return d[key] == null || (d[key] is string && d[key].size() <= max);
+      return d.get(key, null) == null || (d[key] is string && d[key].size() <= max);
     }
 
     // Profils ---------------------------------------------------------------
