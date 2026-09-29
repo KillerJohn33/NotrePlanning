@@ -5,7 +5,6 @@ Petite application web (PWA) pour gérer ses plannings **pro** et **perso** et l
 - Vues **Agenda** (liste sur 14 jours), **Semaine** (grille horaire, 3 jours sur mobile) et **Mois**
 - Filtres **Moi / Partenaire / Ensemble** et **Pro / Perso / Commun**
 - Vue croisée : chaque jour est coupé en deux colonnes (une par personne), les événements communs prennent toute la largeur
-- **« Libres ensemble »** : créneaux où aucun des deux n'a rien de prévu (7h–23h, 1 h minimum)
 - Événements **privés** : l'autre voit seulement « Occupé », sans titre, lieu ni notes (garanti par les règles de sécurité de la base)
 - Événements **communs** : modifiables par les deux
 - Répétitions : tous les jours, du lundi au vendredi, chaque semaine, chaque mois (+ date de fin)
@@ -95,5 +94,4 @@ Tout est contrôlé par [`firestore.rules`](firestore.rules). Les clés de `conf
 ## Limites actuelles
 
 - Modifier un événement répété modifie **toute la série**. On ne peut pas encore modifier une seule occurrence.
-- Les événements « Toute la journée » ne bloquent pas les créneaux « Libres ensemble ».
 - Un planning commun relie au maximum deux personnes.

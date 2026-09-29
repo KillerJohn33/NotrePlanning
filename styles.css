@@ -385,13 +385,8 @@ input, select, textarea { font: inherit; color: inherit; }
 .tag { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); }
 .tag .i { width: 13px; height: 13px; }
 .tag-cat { background: color-mix(in srgb, var(--cc) 12%, var(--surface-2)); }
-.ag-free .i { color: var(--commun); }
 .hint .i, .owner-note .i, .check .i { color: var(--muted); }
 .ag-empty { color: var(--muted); font-size: 14px; margin: 2px 2px 0; }
-.ag-free {
-  margin: 8px 0 0; font-size: 13px; padding: 8px 12px; border-radius: 10px;
-  background: color-mix(in srgb, var(--commun) 13%, transparent);
-}
 
 /* Dialogues -------------------------------------------------------------------- */
 /* Fenêtres ancrées en haut de l'écran : l'en-tête et les boutons du bas restent visibles,

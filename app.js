@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v25';
+  const APP_VERSION = 'v26';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -36,8 +36,6 @@
   const presetIcon = title => PRESETS.find(p => normTitle(title).startsWith(normTitle(p.title)))?.icon;
   const RECUR_LABEL = { daily: 'Tous les jours', weekdays: 'Lun–ven', weekly: 'Chaque semaine', monthly: 'Chaque mois', yearly: 'Chaque année' };
   const HOUR_PX = 48;
-  const FREE_WINDOW = [7 * 60, 23 * 60]; // créneaux "libres ensemble" cherchés entre 7h et 23h
-  const FREE_MIN = 60;                   // durée minimale d'un créneau libre (minutes)
   const COLORS = ['#3b82f6', '#0ea5e9', '#10b981', '#84cc16', '#f59e0b', '#e8590c', '#ef4444', '#ec4899', '#9b5de5', '#64748b'];
 
   /* Dates ------------------------------------------------------------------- */
@@ -56,7 +54,6 @@
   const fmt = (d, opts) => d.toLocaleDateString('fr-FR', opts);
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const fmtTime = d => `${d.getHours()}h${d.getMinutes() ? pad(d.getMinutes()) : ''}`;
-  const fmtMin = m => `${Math.floor(m / 60)}h${m % 60 ? pad(m % 60) : ''}`;
   // Minutes "horloge" d'un instant dans une journée, borné à [0, 1440].
   const clockMin = (date, dayStart) => {
     if (date <= dayStart) return 0;
@@ -705,31 +702,10 @@
     updateMonthLabel();
   }
 
-  // Créneaux où personne n'a rien de prévu (les événements "journée" ne bloquent pas).
-  function freeTogether(occ, d) {
-    const dEnd = addDays(d, 1);
-    const busy = occ
-      .filter(o => !o.ev.all_day && o.start < dEnd && o.end > d)
-      .map(o => [clockMin(o.start, d), clockMin(o.end, d)])
-      .sort((a, b) => a[0] - b[0]);
-    let [cur, windowEnd] = FREE_WINDOW;
-    const now = new Date();
-    if (sameDay(d, now)) cur = Math.max(cur, Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15);
-    const free = [];
-    for (const [s, e] of busy) {
-      if (s >= windowEnd) break;
-      if (s - cur >= FREE_MIN) free.push([cur, s]);
-      cur = Math.max(cur, e);
-    }
-    if (windowEnd - cur >= FREE_MIN) free.push([cur, windowEnd]);
-    return free;
-  }
-
   function renderAgenda(main) {
     const { from, to } = state.range;
     const today = new Date();
     const occ = visibleOccurrences(from, to);
-    const allOcc = splitLanes() ? visibleOccurrences(from, to, { ignoreFilters: true }) : null;
     let html = '<div class="agenda">';
     for (let i = 0; i < 14; i++) {
       const d = addDays(from, i);
@@ -743,10 +719,6 @@
         html += '<div class="ag-list">' + items.map(o => agendaItem(o, d, dEnd)).join('') + '</div>';
       } else {
         html += '<p class="ag-empty">Rien de prévu</p>';
-      }
-      if (allOcc) {
-        const free = freeTogether(allOcc, d);
-        if (free.length) html += `<p class="ag-free">${ic('sparkles')} Libres ensemble : ${free.map(([a, b]) => `${fmtMin(a)} – ${fmtMin(b)}`).join(' · ')}</p>`;
       }
       html += '</section>';
     }
@@ -1064,10 +1036,6 @@
     html += items.length
       ? `<div class="ag-list">${items.map(o => agendaItem(o, d, dEnd)).join('')}</div>`
       : '<p class="ag-empty">Rien de prévu ce jour-là.</p>';
-    if (splitLanes()) {
-      const free = freeTogether(visibleOccurrences(d, dEnd, { ignoreFilters: true }), d);
-      if (free.length) html += `<p class="ag-free">${ic('sparkles')} Libres ensemble : ${free.map(([a, b]) => `${fmtMin(a)} – ${fmtMin(b)}`).join(' · ')}</p>`;
-    }
     $('#dayBody').innerHTML = html;
   }
 

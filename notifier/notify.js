@@ -17,8 +17,6 @@ const APP_URL = 'https://killerjohn33.github.io/NotrePlanning/';
 const MAX_CATCH_UP = 30 * 60e3;   // on ne rattrape pas plus de 30 min de retard (évite les rafales)
 const MORNING_HOUR = 7;
 const MORNING_LAST_HOUR = 10;     // si GitHub a pris du retard, le résumé part quand même avant 10h
-const FREE_WINDOW = [7 * 60, 23 * 60];
-const FREE_MIN = 60;
 
 admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
 const db = admin.firestore();
@@ -31,9 +29,7 @@ const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, d.getHours(), d.getMinutes());
 const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const fmtTime = d => `${d.getHours()}h${d.getMinutes() ? pad(d.getMinutes()) : ''}`;
-const fmtMin = m => `${Math.floor(m / 60)}h${m % 60 ? pad(m % 60) : ''}`;
 const fmtDay = d => d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-const clockMin = (date, day) => (date <= day ? 0 : date >= addDays(day, 1) ? 1440 : date.getHours() * 60 + date.getMinutes());
 
 // Mêmes règles de répétition que l'application (app.js › occurrences).
 function occurrences(ev, from, to) {
@@ -65,21 +61,6 @@ function occurrences(ev, from, to) {
   return out;
 }
 
-function freeTogether(occ, day) {
-  const busy = occ
-    .filter(o => !o.ev.all_day && o.start < addDays(day, 1) && o.end > day)
-    .map(o => [clockMin(o.start, day), clockMin(o.end, day)])
-    .sort((a, b) => a[0] - b[0]);
-  let [cur, windowEnd] = FREE_WINDOW;
-  const free = [];
-  for (const [s, e] of busy) {
-    if (s >= windowEnd) break;
-    if (s - cur >= FREE_MIN) free.push([cur, s]);
-    cur = Math.max(cur, e);
-  }
-  if (windowEnd - cur >= FREE_MIN) free.push([cur, windowEnd]);
-  return free;
-}
 
 async function main() {
   const now = new Date();
@@ -179,11 +160,6 @@ async function main() {
         : `• ${o.start < today ? '…' : fmtTime(o.start)}–${fmtTime(o.end)} ${titleOf(o.ev)}`));
       if (mine.length > 5) lines.push(`• … et ${mine.length - 5} autre(s)`);
       if (!lines.length) lines.push('Rien de prévu aujourd’hui.');
-      if (partner) {
-        const both = occ.filter(o => o.ev.owner_id === u.id || o.ev.owner_id === partner.id);
-        const free = freeTogether(both, today);
-        if (free.length) lines.push(`Libres ensemble : ${free.map(([a, b]) => `${fmtMin(a)}–${fmtMin(b)}`).join(', ')}`);
-      }
       outbox.push({ uid: u.id, title: `Bonjour ${u.display_name || ''} ☀️ Ta journée`.replace('  ', ' '), body: lines.join('\n'), tag: `matin-${dayKey(today)}` });
       morningSent[u.id] = dayKey(today);
     }
