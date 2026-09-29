@@ -27,9 +27,16 @@
   --glass-shadow-hover: 0 2px 4px rgba(15, 23, 42, .07), 0 8px 22px rgba(15, 23, 42, .1);
   --track: rgba(118, 128, 150, .13);
   --tint-hi: rgba(255, 255, 255, .55);
+  /* Barre de navigation flottante */
+  --nav-glass: rgba(255, 255, 255, .74);
+  --nav-shadow: 0 1px 2px rgba(15, 23, 42, .08), 0 12px 32px rgba(15, 23, 42, .16);
+  --nav-bottom: 22px;
+  --nav-space: 108px; /* place laissée sous le contenu pour ne pas être caché par la barre */
 }
+/* Thème sombre : automatique (réglage de l'appareil) sauf si « Clair » est forcé,
+   et toujours quand « Sombre » est forcé (bloc recopié plus bas). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --bg: #0f1115;
     --surface: #181b22;
@@ -51,7 +58,34 @@
     --glass-shadow-hover: 0 2px 4px rgba(0, 0, 0, .45), 0 10px 26px rgba(0, 0, 0, .4);
     --track: rgba(255, 255, 255, .06);
     --tint-hi: rgba(255, 255, 255, .14);
+    --nav-glass: rgba(34, 38, 48, .72);
+    --nav-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 32px rgba(0, 0, 0, .5);
   }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1115;
+  --surface: #181b22;
+  --surface-2: #232730;
+  --text: #e8eaf0;
+  --muted: #9aa1ae;
+  --border: #2a2f3a;
+  --accent: #7b8ff5;
+  --accent-text: #0f1115;
+  --commun: #b184f0;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 20px rgba(0, 0, 0, .35);
+  --cat-pro: #7b8ff5;
+  --cat-perso: #34d399;
+  --glass: linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .04));
+  --glass-strong: linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, .09));
+  --glass-border: rgba(255, 255, 255, .11);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .16), inset 0 -1px 0 rgba(0, 0, 0, .25);
+  --glass-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+  --glass-shadow-hover: 0 2px 4px rgba(0, 0, 0, .45), 0 10px 26px rgba(0, 0, 0, .4);
+  --track: rgba(255, 255, 255, .06);
+  --tint-hi: rgba(255, 255, 255, .14);
+  --nav-glass: rgba(34, 38, 48, .72);
+  --nav-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 32px rgba(0, 0, 0, .5);
 }
 
 * { box-sizing: border-box; }
@@ -181,9 +215,41 @@ input, select, textarea { font: inherit; color: inherit; }
 .main { flex: 1; min-height: 0; overflow: auto; position: relative; }
 .main.view-week { overflow: hidden; display: flex; flex-direction: column; }
 
-/* Bouton flottant : bulle de verre teintée */
+/* Barre de navigation flottante : capsule de verre dépoli, remontée du bord pour le pouce */
+.tabbar {
+  position: fixed; z-index: 30; left: 50%; transform: translateX(-50%);
+  bottom: max(var(--nav-bottom), calc(env(safe-area-inset-bottom) + 10px));
+  width: min(560px, calc(100vw - 24px));
+  display: flex; align-items: center; gap: 10px;
+}
+.tab-capsule {
+  flex: 1; min-width: 0; display: flex; gap: 2px; padding: 5px; border-radius: 999px;
+  background: var(--nav-glass); border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-hi), var(--nav-shadow);
+  -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%);
+}
+.tab {
+  flex: 1; min-width: 0; border: 1px solid transparent; background: transparent; border-radius: 999px;
+  padding: 7px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  color: var(--muted); font-size: 11px; font-weight: 600; line-height: 1.1;
+  transition: background .2s ease, color .2s ease, transform .15s ease;
+}
+.tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab .i { width: 22px; height: 22px; }
+.tab:hover { color: var(--text); }
+.tab:active { transform: scale(.94); }
+.tab:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: -2px; }
+/* Onglet actif : goutte de verre teintée */
+.tab[aria-pressed="true"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: inset 0 1px 0 var(--tint-hi);
+}
+
+/* Bouton d'ajout : bulle de verre teintée, à côté de la capsule */
 .fab {
-  position: fixed; right: 20px; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 20;
+  flex: none; position: relative;
   width: 60px; height: 60px; border-radius: 50%; padding: 0;
   display: grid; place-items: center; color: #fff;
   border: 1px solid color-mix(in srgb, var(--accent) 55%, rgba(255, 255, 255, .4));
@@ -198,7 +264,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .fab:active { transform: scale(.94); }
 
 /* Vue semaine ---------------------------------------------------------------- */
-.wk-scroll { flex: 1; overflow: auto; overscroll-behavior: contain; }
+.wk-scroll { flex: 1; overflow: auto; overscroll-behavior: contain; padding-bottom: var(--nav-space); }
 .wk-sticky {
   position: sticky; top: 0; z-index: 6; background: var(--surface);
   border-bottom: 1px solid var(--border); box-shadow: 0 2px 6px rgba(0, 0, 0, .04);
@@ -261,7 +327,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .now::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--now); }
 
 /* Vue mois ------------------------------------------------------------------- */
-.month { display: flex; flex-direction: column; min-height: 100%; }
+.month { display: flex; flex-direction: column; min-height: 100%; padding-bottom: var(--nav-space); }
 .mo-head {
   display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); position: sticky; top: 0; z-index: 2;
   background: var(--surface); border-bottom: 1px solid var(--border);
@@ -289,7 +355,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .mo-more { font-size: 11px; color: var(--muted); padding-left: 4px; }
 
 /* Vue agenda ----------------------------------------------------------------- */
-.agenda { max-width: 760px; margin: 0 auto; padding: 8px 16px 100px; }
+.agenda { max-width: 760px; margin: 0 auto; padding: 8px 16px var(--nav-space); }
 .ag-day { margin-bottom: 14px; }
 .ag-date {
   display: flex; align-items: baseline; gap: 8px; padding: 8px 2px 6px;
@@ -373,6 +439,8 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .set-section:last-child { padding-bottom: 20px; }
 .set-section h3 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .set-section p { margin: 0; }
+.theme-seg { display: flex; }
+.theme-seg button { flex: 1; }
 .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
 .swatch { width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--c); }
 .swatch[aria-pressed="true"] { outline: 2px solid var(--text); outline-offset: 2px; }
@@ -449,7 +517,7 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 
 /* Notification ------------------------------------------------------------------- */
 .toast {
-  inset: auto; left: 50%; bottom: 96px; transform: translateX(-50%); margin: 0;
+  inset: auto; left: 50%; bottom: calc(var(--nav-bottom) + 84px); transform: translateX(-50%); margin: 0;
   border: 0; background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px;
   font-size: 14px; max-width: calc(100vw - 32px); box-shadow: var(--shadow);
 }
@@ -461,8 +529,6 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
   .nav { gap: 4px; }
   .nav .btn { padding: 0 10px; }
   .nav h1 { font-size: 15px; margin-left: 4px; }
-  #viewSeg { order: 3; width: 100%; }
-  #viewSeg button { flex: 1; }
   .filters { padding: 6px 12px; gap: 6px; }
   #whoSeg button { padding: 5px 9px; font-size: 13px; }
   .chip { padding: 3px 10px; }
@@ -472,7 +538,8 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
   .mo-events { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 3px; }
   .mo-ev { padding: 0; }
   .mo-ev span, .mo-more { display: none; }
-  .agenda { padding: 4px 12px 100px; }
+  .agenda { padding: 4px 12px var(--nav-space); }
+  .tab { font-size: 10px; letter-spacing: -.1px; padding: 7px 2px 6px; }
   .row { flex-wrap: wrap; }
   /* Sur téléphone, le navigateur floute le haut de l'écran (heure, encoche) : on décale
      tout le contenu sous cette zone. */

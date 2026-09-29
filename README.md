@@ -9,7 +9,8 @@ Petite application web (PWA) pour gérer ses plannings **pro** et **perso** et l
 - Événements **privés** : l'autre voit seulement « Occupé », sans titre, lieu ni notes (garanti par les règles de sécurité de la base)
 - Événements **communs** : modifiables par les deux
 - Répétitions : tous les jours, du lundi au vendredi, chaque semaine, chaque mois (+ date de fin)
-- Synchronisation en temps réel, thème clair/sombre automatique, installable sur téléphone
+- Synchronisation en temps réel, installable sur téléphone (PWA)
+- Barre de navigation flottante « Liquid Glass » (Agenda, Semaine, Mois, Télétravail, Réglages, +) et thème Automatique / Clair / Sombre (⚙ Réglages → Apparence)
 - Raccourcis clavier : `←` `→` naviguer, `t` aujourd'hui, `n` nouvel événement, `a` / `s` / `m` changer de vue
 
 Stack : HTML/CSS/JS sans build + [Firebase](https://firebase.google.com) (Authentication + Cloud Firestore, offre gratuite Spark), hébergé sur GitHub Pages.

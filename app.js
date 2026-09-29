@@ -209,7 +209,7 @@
     }
     $('#period').textContent = label;
 
-    $$('#viewSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
+    $$('#viewSeg [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
     $$('#catChips [data-cat]').forEach(b => b.setAttribute('aria-pressed', String(!!state.cats[b.dataset.cat])));
 
     const whoSeg = $('#whoSeg');
@@ -591,6 +591,13 @@
           <div><button class="btn primary">Enregistrer</button></div>
         </form>
       </section>
+      <section class="set-section">
+        <h3>Apparence</h3>
+        <div class="seg theme-seg" role="group" aria-label="Thème">
+          ${[['auto', 'auto', 'Automatique'], ['light', 'sun', 'Clair'], ['dark', 'moon', 'Sombre']].map(([value, icon, label]) =>
+            `<button type="button" data-theme-choice="${value}" aria-pressed="${currentTheme() === value}">${ic(icon)}${label}</button>`).join('')}
+        </div>
+      </section>
       <section class="set-section"><h3>Planning partagé</h3>${share}</section>
       <section class="set-section">
         <h3>Planning de travail</h3>
@@ -607,7 +614,24 @@
       </section>`;
   }
 
+  // Thème : « auto » suit le réglage de l'appareil. Mémorisé sur l'appareil, appliqué
+  // par window.applyTheme (défini dans index.html pour éviter un flash au chargement).
+  const THEME_KEY = 'notre-planning-theme';
+  function currentTheme() {
+    try { return localStorage.getItem(THEME_KEY) || 'auto'; } catch { return 'auto'; }
+  }
+  function setTheme(pref) {
+    try { localStorage.setItem(THEME_KEY, pref); } catch { /* ignoré */ }
+    window.applyTheme(pref);
+  }
+
   async function onSettingsClick(e) {
+    const themeBtn = e.target.closest('[data-theme-choice]');
+    if (themeBtn) {
+      setTheme(themeBtn.dataset.themeChoice);
+      $$('[data-theme-choice]', setDlg).forEach(b => b.setAttribute('aria-pressed', String(b === themeBtn)));
+      return;
+    }
     const swatch = e.target.closest('[data-color]');
     if (swatch) {
       $$('[data-color]', setDlg).forEach(b => b.setAttribute('aria-pressed', String(b === swatch)));

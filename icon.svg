@@ -1,8 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#4f6bed"/>
-  <rect x="11" y="15" width="42" height="38" rx="7" fill="#fff"/>
-  <path d="M11 22a7 7 0 0 1 7-7h28a7 7 0 0 1 7 7v4H11z" fill="#c9d2fb"/>
-  <rect x="20" y="10" width="4" height="10" rx="2" fill="#fff"/>
-  <rect x="40" y="10" width="4" height="10" rx="2" fill="#fff"/>
-  <path d="M32 47c-9-6-10.5-12.5-6.5-15 2.6-1.6 5.3-.3 6.5 1.8 1.2-2.1 3.9-3.4 6.5-1.8 4 2.5 2.5 9-6.5 15z" fill="#9b5de5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7189ff"/>
+      <stop offset="1" stop-color="#3d52d6"/>
+    </linearGradient>
+    <radialGradient id="shine" cx=".28" cy=".12" r=".85">
+      <stop offset="0" stop-color="#fff" stop-opacity=".42"/>
+      <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e9edff"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#dfe5ff"/>
+      <stop offset="1" stop-color="#c7d1ff"/>
+    </linearGradient>
+    <linearGradient id="heart" x1=".15" y1="0" x2=".85" y2="1">
+      <stop offset="0" stop-color="#c38bff"/>
+      <stop offset="1" stop-color="#7c4dff"/>
+    </linearGradient>
+    <filter id="drop" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#1b2470" flood-opacity=".38"/>
+    </filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#5b2bd6" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <!-- Fond : squircle bleu dégradé avec reflet -->
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="116" fill="url(#shine)"/>
+  <!-- Calendrier en verre blanc -->
+  <g filter="url(#drop)">
+    <rect x="92" y="122" width="328" height="300" rx="62" fill="url(#card)"/>
+  </g>
+  <path d="M92 184a62 62 0 0 1 62-62h204a62 62 0 0 1 62 62v20H92z" fill="url(#band)"/>
+  <rect x="92.5" y="122.5" width="327" height="299" rx="61.5" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3"/>
+  <!-- Anneaux -->
+  <rect x="164" y="84" width="32" height="80" rx="16" fill="#fff"/>
+  <rect x="316" y="84" width="32" height="80" rx="16" fill="#fff"/>
+  <rect x="164" y="84" width="32" height="80" rx="16" fill="none" stroke="#b9c4ff" stroke-width="3"/>
+  <rect x="316" y="84" width="32" height="80" rx="16" fill="none" stroke="#b9c4ff" stroke-width="3"/>
+  <!-- Cœur -->
+  <g filter="url(#soft)">
+    <path d="M256 384c-66-42-92-82-92-116 0-30 22-51 49-51 19 0 34 10 43 26 9-16 24-26 43-26 27 0 49 21 49 51 0 34-26 74-92 116z" fill="url(#heart)"/>
+  </g>
+  <path d="M199 258c3-13 14-22 27-22" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="11" stroke-linecap="round"/>
 </svg>
