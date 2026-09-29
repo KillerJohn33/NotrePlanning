@@ -757,8 +757,52 @@
     });
   }
 
+  /* Bouton + : menu de bulles colorées (événement, rendez-vous, anniversaire, horaires…) -- */
+  const dialItems = () => [
+    { act: 'event', label: 'Événement', icon: 'month', color: '#4f6bed' },
+    { act: 'rdv', label: 'Rendez-vous', icon: 'doctor', color: '#10b981' },
+    { act: 'birthday', label: 'Anniversaire', icon: 'cake', color: '#ec4899' },
+    ...(usesRemote() ? [{ act: 'remote', label: 'Télétravail', icon: 'laptop', color: '#0ea5e9' }] : []),
+    { act: 'shifts', label: 'Horaires', icon: 'clock', color: '#f59e0b' },
+  ];
+  let dialTimer;
+  function toggleDial(open = $('#speedDial').hidden) {
+    const dial = $('#speedDial');
+    const fab = $('#fab');
+    clearTimeout(dialTimer);
+    fab.classList.toggle('is-open', open);
+    fab.setAttribute('aria-expanded', String(open));
+    $('#dialBackdrop').hidden = !open;
+    if (open) {
+      const items = dialItems();
+      dial.innerHTML = items.map((d, i) => `<button type="button" class="dial-item" role="menuitem" data-dial="${d.act}"
+        style="--dc:${d.color};--i:${items.length - 1 - i}"><span class="dial-label">${d.label}</span><span class="dial-bubble">${ic(d.icon)}</span></button>`).join('');
+      dial.hidden = false;
+      requestAnimationFrame(() => dial.classList.add('is-open'));
+    } else {
+      dial.classList.remove('is-open');
+      dialTimer = setTimeout(() => { dial.hidden = true; }, 200);
+    }
+  }
+  function runDial(act) {
+    toggleDial(false);
+    if (act === 'remote') return openWork('remote');
+    if (act === 'shifts') return openWork(shiftTypes()[0]?.id);
+    newEvent();
+    if (act === 'rdv') {
+      $('#evDlgTitle').textContent = 'Nouveau rendez-vous';
+      F.title.placeholder = 'Avec qui ? (médecin, banque, garage…)';
+      F.category.value = 'perso';
+      syncEventForm();
+    } else if (act === 'birthday') {
+      $('#evDlgTitle').textContent = 'Nouvel anniversaire';
+      applyPreset(PRESETS.find(p => p.yearly));
+    }
+  }
+
   function fillEventForm(ev, occ = null) {
     editing = ev;
+    F.title.placeholder = 'Titre';
     const repeated = !!(ev.id && ev.recurrence && ev.recurrence !== 'none');
     editingOcc = repeated ? occ : null;
     const readOnly = !canEdit(ev);
@@ -1150,7 +1194,7 @@
       <section class="set-section"><h3>Planning partagé</h3>${share}</section>
       <section class="set-section">
         <h3>Types d’horaires</h3>
-        <p class="muted">Tes horaires habituels (ouverture, fermeture…). Place-les ensuite sur plusieurs jours d’un coup depuis l’onglet Horaires.</p>
+        <p class="muted">Tes horaires habituels (ouverture, fermeture…). Place-les ensuite sur plusieurs jours d’un coup avec le bouton + → Horaires.</p>
         <form id="shiftForm" class="shift-form">
           <div id="shiftRows">${shiftTypes().map(shiftRow).join('')}</div>
           <div class="btn-row">
@@ -1910,8 +1954,13 @@
       saveUi();
       render();
     };
-    // En vue Listes, « + » sert à ajouter un élément à la liste affichée.
-    $('#fab').onclick = () => (state.view === 'lists' ? $('#listAdd [name=text]')?.focus() : newEvent());
+    // « + » ouvre le menu de bulles ; en vue Listes, il sert à ajouter un élément à la liste.
+    $('#fab').onclick = () => (state.view === 'lists' ? $('#listAdd [name=text]')?.focus() : toggleDial());
+    $('#dialBackdrop').onclick = () => toggleDial(false);
+    $('#speedDial').onclick = e => {
+      const b = e.target.closest('[data-dial]');
+      if (b) runDial(b.dataset.dial);
+    };
     $('#settingsBtn').onclick = openSettings;
 
     $('#main').addEventListener('submit', onListAdd);
@@ -1967,7 +2016,6 @@
       }
     };
 
-    $('#remoteBtn').onclick = () => openWork();
     $('#rmPrev').onclick = () => { rmMonth = new Date(rmMonth.getFullYear(), rmMonth.getMonth() - 1, 1); renderWork(); };
     $('#rmNext').onclick = () => { rmMonth = new Date(rmMonth.getFullYear(), rmMonth.getMonth() + 1, 1); renderWork(); };
     $('#rmModes').onclick = e => {
@@ -2032,6 +2080,7 @@
     $('#authForm').addEventListener('submit', submitAuth);
 
     document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !$('#speedDial').hidden) return toggleDial(false);
       if ($$("dialog[open]").length || $("#app").hidden || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.target.closest('input, textarea, select')) return;
       if (e.key === 'ArrowLeft') step(-1);

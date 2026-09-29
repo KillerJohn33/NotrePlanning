@@ -136,11 +136,13 @@
       <button class="tab" data-view="week"><svg class="i"><use href="#i-week"/></svg><span>Semaine</span></button>
       <button class="tab" data-view="month"><svg class="i"><use href="#i-month"/></svg><span>Mois</span></button>
       <button class="tab" data-view="lists"><svg class="i"><use href="#i-list"/></svg><span>Listes</span></button>
-      <button class="tab" id="remoteBtn" type="button"><svg class="i"><use href="#i-clock"/></svg><span>Horaires</span></button>
       <button class="tab" id="settingsBtn" type="button"><svg class="i"><use href="#i-settings"/></svg><span>Réglages</span></button>
     </div>
-    <button id="fab" class="fab" aria-label="Nouvel événement"><svg class="i"><use href="#i-plus"/></svg></button>
+    <button id="fab" class="fab" aria-label="Ajouter" aria-haspopup="menu" aria-expanded="false"><svg class="i"><use href="#i-plus"/></svg></button>
+    <!-- Menu du bouton + : bulles colorées (remplies par app.js) -->
+    <div id="speedDial" class="speed-dial" role="menu" aria-label="Ajouter" hidden></div>
   </nav>
+  <div id="dialBackdrop" class="dial-backdrop" hidden></div>
 </div>
 
 <!-- Événement -->
