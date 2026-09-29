@@ -22,7 +22,8 @@ const FREE_MIN = 60;
 
 admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
 const db = admin.firestore();
-webpush.setVapidDetails(APP_URL, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+// trim : un secret collé avec un retour à la ligne final serait refusé par web-push.
+webpush.setVapidDetails(APP_URL, (process.env.VAPID_PUBLIC_KEY || '').trim(), (process.env.VAPID_PRIVATE_KEY || '').trim());
 
 /* Dates (heure de Paris grâce à TZ) ----------------------------------------------- */
 const pad = n => String(n).padStart(2, '0');
