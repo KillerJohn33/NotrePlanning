@@ -2,6 +2,8 @@
 (() => {
   'use strict';
 
+  // Même numéro que CACHE dans sw.js, à changer à chaque publication.
+  const APP_VERSION = 'v24';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1307,15 +1309,26 @@
   addEventListener('appinstalled', () => { installPrompt = null; toast('Application installée'); });
   const isInstalled = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   function installSection() {
-    if (isInstalled()) return '';
-    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const body = installPrompt
-      ? `<div><button class="btn primary" data-act="install">${ic('import')} Installer l’application</button></div>`
-      : ios
-        ? '<p class="muted">Dans Safari, touche Partager puis « Sur l’écran d’accueil ».</p>'
-        : '<p class="muted">Dans le menu du navigateur (⋮), choisis « Installer l’application » ou « Ajouter à l’écran d’accueil ».</p>';
-    return `<section class="set-section"><h3>Application</h3>
-      <p class="muted">Installe Notre Planning sur ton écran d’accueil pour l’ouvrir comme une vraie application.</p>${body}</section>`;
+    let install = '';
+    if (!isInstalled()) {
+      const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      install = '<p class="muted">Installe Notre Planning sur ton écran d’accueil pour l’ouvrir comme une vraie application.</p>'
+        + (installPrompt
+          ? `<div><button class="btn primary" data-act="install">${ic('import')} Installer l’application</button></div>`
+          : ios
+            ? '<p class="muted">Dans Safari, touche Partager puis « Sur l’écran d’accueil ».</p>'
+            : '<p class="muted">Dans le menu du navigateur (⋮), choisis « Installer l’application » ou « Ajouter à l’écran d’accueil ».</p>');
+    }
+    return `<section class="set-section"><h3>Application</h3>${install}
+      <p class="muted">Version ${APP_VERSION}. Les mises à jour s’installent seules ; en cas de doute :</p>
+      <div><button class="btn" data-act="reload-app">${ic('repeat')} Recharger l’application</button></div></section>`;
+  }
+
+  // Recharge complète : dernière version du service worker, cache vidé, page rechargée.
+  async function reloadApp() {
+    try { await (await navigator.serviceWorker?.getRegistration())?.update(); } catch { /* hors-ligne */ }
+    try { for (const k of await caches.keys()) await caches.delete(k); } catch { /* ignoré */ }
+    location.reload();
   }
 
   // Une ligne éditable de type d'horaire (nom, début, fin).
@@ -1499,6 +1512,8 @@
         toast('Notifications désactivées sur cet appareil');
       } else if (act === 'push-test') {
         return testPush();
+      } else if (act === 'reload-app') {
+        return reloadApp();
       } else if (act === 'install') {
         if (!installPrompt) return;
         installPrompt.prompt();
@@ -2111,7 +2126,20 @@
     else if (user.id !== state.user?.id) enterApp(user);
 
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        // À chaque retour dans l'app, on regarde si une nouvelle version a été publiée.
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+      }).catch(() => {});
+      // Nouvelle version installée (le service worker a changé) : bandeau pour recharger.
+      let hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController) { hadController = true; return; } // toute première installation
+        const bar = $('#updateBanner');
+        bar.hidden = false;
+        bar.innerHTML = `${ic('repeat')}<span>Nouvelle version disponible.</span>
+          <button class="btn primary" type="button">Mettre à jour</button>`;
+        bar.querySelector('button').onclick = () => location.reload();
+      });
     }
   }
 

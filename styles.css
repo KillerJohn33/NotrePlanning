@@ -756,3 +756,7 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .dial-item:active .dial-bubble { transform: scale(.94); }
 .fab .i { transition: transform .2s ease; }
 .fab.is-open .i { transform: rotate(45deg); }
+
+/* Nouvelle version disponible */
+.update-banner { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--text); }
+.update-banner > .i { color: var(--accent); }

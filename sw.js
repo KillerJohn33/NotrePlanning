@@ -1,9 +1,12 @@
 /* Cache de l'interface uniquement : les données passent toujours par le réseau. */
-const CACHE = 'notre-planning-v23';
+// Changer ce numéro à chaque publication (le même que APP_VERSION dans app.js) :
+// c'est ce qui fait détecter la nouvelle version par les appareils.
+const CACHE = 'notre-planning-v24';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'store.js', 'import.js', 'config.js', 'icon.svg', 'apple-touch-icon.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
+  // no-cache : ne pas reprendre une copie périmée du cache HTTP du navigateur.
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL.map(url => new Request(url, { cache: 'no-cache' })))));
   self.skipWaiting();
 });
 self.addEventListener('activate', event => event.waitUntil((async () => {
@@ -11,11 +14,14 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
   await self.clients.claim();
 })()));
 // Réseau d'abord (pour toujours avoir la dernière version), cache en secours hors-ligne.
+// no-cache : le navigateur revérifie chaque fichier auprès du serveur (réponse 304 légère
+// s'il n'a pas changé) au lieu de garder une copie jusqu'à 10 min (réglage de GitHub Pages).
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const fresh = req.mode === 'navigate' ? fetch(req.url, { cache: 'no-cache' }) : fetch(req, { cache: 'no-cache' });
   event.respondWith(
-    fetch(req)
+    fresh
       .then(res => {
         if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
         return res;
