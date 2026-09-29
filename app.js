@@ -219,22 +219,10 @@
     } catch (err) { console.error(err); }
   }
   const schoolHolidayOf = d => { const k = toDateInput(d); return schoolHolidays.find(h => h.from <= k && k < h.to); };
-  const shortSchoolName = name => name.replace(/^(début des )?vacances (de la |de l'|de |d'|d’)?/i, '').replace(/^./, c => c.toUpperCase());
   const schoolTag = d => {
     const h = schoolHolidayOf(d);
     return h ? `<span class="tag school-tag">${ic('school-bag')} ${esc(h.name)} (zone ${schoolZone})</span>` : '';
   };
-  // Bande turquoise des vacances scolaires, continue d'une case à l'autre (vue mois).
-  function schoolRibbon(d, lastOfMonth) {
-    const h = schoolHolidayOf(d);
-    if (!h) return '';
-    const k = toDateInput(d);
-    const first = k === h.from;
-    const last = toDateInput(addDays(d, 1)) === h.to;
-    const rowStart = first || d.getDay() === 1 || d.getDate() === 1;
-    return `<div class="school-bar${first ? ' is-first' : ''}${last || lastOfMonth || d.getDay() === 0 ? ' is-last' : ''}" title="${esc(h.name)} (zone ${schoolZone})">`
-      + (rowStart ? `${ic('school-bag')}<span>${esc(shortSchoolName(h.name))}</span>` : '') + '</div>';
-  }
 
   // Rappel quand le planning Excel importé arrive à sa fin (dans moins de 14 jours).
   const WORK_ALERT_KEY = 'notre-planning-work-alert';
@@ -628,8 +616,11 @@
         const off = all.find(o => isOff(o.ev));
         const items = all.filter(o => !isOff(o.ev));
         const hol = holidayName(d);
-        html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? 'is-off' : ''} ${hol ? 'is-holiday' : ''}" data-goto="${toDateInput(d)}"${hol ? ` title="${esc(hol)}"` : ''}>
-          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${schoolRibbon(d, day === nDays)}${offRibbon(off, d, day === nDays)}<div class="mo-events">`;
+        // Vacances scolaires : simple trait coloré en bas de la case (sans prendre de place).
+        const school = schoolHolidayOf(d);
+        const tip = [hol, school && `${school.name} (zone ${schoolZone})`].filter(Boolean).join(' · ');
+        html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? 'is-off' : ''} ${hol ? 'is-holiday' : ''} ${school ? 'is-school' : ''}" data-goto="${toDateInput(d)}"${tip ? ` title="${esc(tip)}"` : ''}>
+          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, d, day === nDays)}<div class="mo-events">`;
         for (const o of items.slice(0, max)) {
           const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
           html += `<button class="mo-ev" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}"><i></i><span>${time}${esc(o.ev.title)}</span></button>`;

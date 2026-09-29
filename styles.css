@@ -661,16 +661,8 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .notif-delay { flex-direction: row; align-items: center; gap: 10px; margin-left: 26px; }
 .notif-delay select { width: auto; }
 
-/* Vacances scolaires : bande turquoise continue (vue mois), repère en haut du jour (vue semaine) */
-.school-bar {
-  align-self: stretch; margin: 1px -5px 2px; height: 16px; padding: 0 6px;
-  display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap;
-  background: var(--school-bg); color: var(--school); font-size: 10px; font-weight: 700;
-}
-.school-bar.is-first { margin-left: 2px; border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
-.school-bar.is-last { margin-right: 2px; border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
-.school-bar .i { width: 11px; height: 11px; flex: none; }
-.school-bar span { overflow: hidden; text-overflow: ellipsis; }
+/* Vacances scolaires : trait coloré en bas des cases (vue mois) et en haut des jours (vue semaine) */
+.mo-cell.is-school { box-shadow: inset 0 -3px 0 var(--school); }
 .wk-day.is-school { box-shadow: inset 0 3px 0 var(--school); }
 .school-tag { font-size: 12px; font-weight: 600; color: var(--school); background: var(--school-bg); }
 
