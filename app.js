@@ -14,6 +14,24 @@
     perso: { label: 'Perso', icon: 'perso' },
     commun: { label: 'Commun', icon: 'commun' },
   };
+  // Suggestions proposées à la création d'un événement : titre, type, durée (min) ou journée entière.
+  const PRESETS = [
+    { title: 'Médecin', icon: 'doctor', cat: 'perso', min: 60 },
+    { title: 'Crèche', icon: 'baby', cat: 'commun', min: 30 },
+    { title: 'École', icon: 'school', cat: 'commun', min: 30 },
+    { title: 'Administratif', icon: 'admin', cat: 'perso', min: 60 },
+    { title: 'Loisirs', icon: 'leisure', cat: 'perso', min: 120 },
+    { title: 'Repas', icon: 'meal', cat: 'commun', min: 90 },
+    { title: 'Sport', icon: 'sport', cat: 'perso', min: 60 },
+    { title: 'Courses', icon: 'cart', cat: 'commun', min: 60 },
+    { title: 'Famille & amis', icon: 'users', cat: 'commun', min: 180 },
+    { title: 'Anniversaire', icon: 'cake', cat: 'commun', allDay: true },
+    { title: 'Vacances', icon: 'plane', cat: 'commun', allDay: true },
+    { title: 'Réunion', icon: 'pro', cat: 'pro', min: 60 },
+  ];
+  const normTitle = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  // Icône d'une suggestion si le titre commence par son nom (« Médecin – Dr X » → stéthoscope).
+  const presetIcon = title => PRESETS.find(p => normTitle(title).startsWith(normTitle(p.title)))?.icon;
   const RECUR_LABEL = { daily: 'Tous les jours', weekdays: 'Lun–ven', weekly: 'Chaque semaine', monthly: 'Chaque mois' };
   const HOUR_PX = 48;
   const FREE_WINDOW = [7 * 60, 23 * 60]; // créneaux "libres ensemble" cherchés entre 7h et 23h
@@ -138,7 +156,7 @@
       : `<span class="pm" title="${esc(title)}" aria-label="${esc(title)}">${ic('perm')}${dots}</span>`;
   }
   const iconOf = (ev, start) => (isPerm(ev) ? ic('perm', 'i-perm')
-    : ic(isRemoteWork(ev, start) ? 'laptop' : CATS[ev.category].icon));
+    : ic(isRemoteWork(ev, start) ? 'laptop' : (!isMasked(ev) && presetIcon(ev.title)) || CATS[ev.category].icon));
 
   function getRange() {
     if (state.view === 'week') {
@@ -277,6 +295,7 @@
     if (state.view === 'week') renderWeek(main);
     else if (state.view === 'month') renderMonth(main);
     else renderAgenda(main);
+    if (dayDlg.open) renderDay(); // la fiche du jour suit les changements (partenaire, filtres…)
   }
 
   function renderToolbar() {
@@ -611,9 +630,64 @@
     $('#evSeriesNote').hidden = !(ev.id && ev.recurrence !== 'none');
     $('#evImportNote').hidden = !ev.import_key;
     $('#privateRow').hidden = !state.partner && !ev.is_private;
+    renderPresets(!ev.id);
     syncEventForm();
     evDlg.showModal();
-    if (!ev.id) F.title.focus();
+    // Sur téléphone, pas de clavier d'emblée : on laisse voir les suggestions.
+    if (!ev.id && !narrowMq.matches) F.title.focus();
+  }
+
+  /* Détail d'une journée -------------------------------------------------------------- */
+  const dayDlg = $('#dayDlg');
+  let dayDate = null;
+
+  function openDay(date) {
+    dayDate = startOfDay(date);
+    renderDay();
+    if (!dayDlg.open) dayDlg.showModal();
+  }
+
+  function renderDay() {
+    const d = dayDate;
+    const dEnd = addDays(d, 1);
+    const occ = visibleOccurrences(d, dEnd);
+    const items = occ.sort((a, b) => (b.ev.all_day - a.ev.all_day) || (a.start - b.start));
+    const year = d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {};
+    $('#dayDlgTitle').textContent = cap(fmt(d, { weekday: 'long', day: 'numeric', month: 'long', ...year }));
+    const badges = `${sameDay(d, new Date()) ? '<span class="badge">Aujourd’hui</span>' : ''}${permBadge(d, occ, true)}${remoteBadge(d, true)}`;
+    let html = badges ? `<div class="day-badges">${badges}</div>` : '';
+    html += items.length
+      ? `<div class="ag-list">${items.map(o => agendaItem(o, d, dEnd)).join('')}</div>`
+      : '<p class="ag-empty">Rien de prévu ce jour-là.</p>';
+    if (splitLanes()) {
+      const free = freeTogether(visibleOccurrences(d, dEnd, { ignoreFilters: true }), d);
+      if (free.length) html += `<p class="ag-free">${ic('sparkles')} Libres ensemble : ${free.map(([a, b]) => `${fmtMin(a)} – ${fmtMin(b)}`).join(' · ')}</p>`;
+    }
+    $('#dayBody').innerHTML = html;
+  }
+
+  // Suggestions (nouvel événement seulement) : remplissent titre, type et durée.
+  function renderPresets(visible) {
+    const box = $('#evPresets');
+    box.hidden = !visible;
+    if (!visible) return;
+    box.innerHTML = PRESETS.map((p, i) =>
+      `<button type="button" class="preset" data-preset="${i}" data-cat="${p.cat}">${ic(p.icon)}${esc(p.title)}</button>`).join('');
+  }
+  function applyPreset(p) {
+    F.title.value = p.title;
+    F.category.value = p.cat;
+    F.all_day.checked = !!p.allDay;
+    const start = fromInputs(F.start_date.value, F.start_time.value || '09:00');
+    if (p.allDay) {
+      F.end_date.value = F.start_date.value;
+    } else {
+      const end = new Date(start.getTime() + p.min * 60e3);
+      F.end_date.value = toDateInput(end);
+      F.end_time.value = toTimeInput(end);
+    }
+    $$('.preset', evForm).forEach(b => b.setAttribute('aria-pressed', String(PRESETS[b.dataset.preset] === p)));
+    syncEventForm();
   }
 
   function syncEventForm() {
@@ -1137,12 +1211,10 @@
 
     $('#main').addEventListener('click', e => {
       const evEl = e.target.closest('[data-ev]');
-      if (evEl) return openEvent(evEl.dataset.ev);
       const go = e.target.closest('[data-goto]');
-      if (go) {
-        state.cursor = fromInputs(go.dataset.goto);
-        return setView('agenda');
-      }
+      // En vue mois sur téléphone, les événements sont de simples pastilles : toute la case ouvre le jour.
+      if (evEl && !(go && state.view === 'month' && narrowMq.matches)) return openEvent(evEl.dataset.ev);
+      if (go) return openDay(fromInputs(go.dataset.goto));
       const col = e.target.closest('.wk-col');
       if (col) {
         const minutes = Math.floor(((e.clientY - col.getBoundingClientRect().top) / HOUR_PX) * 2) * 30;
@@ -1192,7 +1264,31 @@
     impForm.addEventListener('change', renderImportPreview);
     impForm.addEventListener('submit', submitImport);
 
-    for (const dlg of [evDlg, setDlg, impDlg, rmDlg]) {
+    // Fiche du jour : un créneau ouvre sa fiche, « Ajouter » crée un événement ce jour-là.
+    dayDlg.addEventListener('click', e => {
+      const evEl = e.target.closest('[data-ev]');
+      if (!evEl) return;
+      dayDlg.close();
+      openEvent(evEl.dataset.ev);
+    });
+    $('#dayAdd').onclick = () => {
+      dayDlg.close();
+      const now = new Date();
+      newEvent(sameDay(dayDate, now)
+        ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1)
+        : new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), 9));
+    };
+    $('#dayAgenda').onclick = () => {
+      dayDlg.close();
+      state.cursor = dayDate;
+      setView('agenda');
+    };
+    evForm.addEventListener('click', e => {
+      const b = e.target.closest('[data-preset]');
+      if (b) applyPreset(PRESETS[b.dataset.preset]);
+    });
+
+    for (const dlg of [evDlg, setDlg, impDlg, rmDlg, dayDlg]) {
       dlg.addEventListener('click', e => {
         if (e.target === dlg || e.target.closest('[data-close]')) dlg.close();
       });
@@ -1203,7 +1299,7 @@
     $('#authForm').addEventListener('submit', submitAuth);
 
     document.addEventListener('keydown', e => {
-      if (evDlg.open || setDlg.open || impDlg.open || rmDlg.open || $('#app').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (evDlg.open || setDlg.open || impDlg.open || rmDlg.open || dayDlg.open || $('#app').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.target.closest('input, textarea, select')) return;
       if (e.key === 'ArrowLeft') step(-1);
       else if (e.key === 'ArrowRight') step(1);
