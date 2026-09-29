@@ -42,20 +42,23 @@ function occurrences(ev, from, to) {
   const dur = end - start;
   if (!ev.recurrence || ev.recurrence === 'none') return end > from && start < to ? [{ ev, start, end }] : [];
   const until = ev.recurrence_until ? addDays(new Date(`${ev.recurrence_until}T00:00:00`), 1) : null;
+  const skip = new Set(ev.exdates || []);
   const stepDays = { daily: 1, weekdays: 1, weekly: 7 }[ev.recurrence];
+  const stepMonths = ev.recurrence === 'yearly' ? 12 : 1;
   let i = stepDays
     ? Math.max(0, Math.floor((from - start - dur) / (stepDays * 864e5)) - 1)
-    : Math.max(0, (from.getFullYear() - start.getFullYear()) * 12 + from.getMonth() - start.getMonth() - 2);
+    : Math.max(0, Math.floor(((from.getFullYear() - start.getFullYear()) * 12 + from.getMonth() - start.getMonth()) / stepMonths) - 2);
   const out = [];
   for (let guard = 0; guard < 1000; guard++, i++) {
     let s;
     if (stepDays) s = addDays(start, i * stepDays);
     else {
-      s = new Date(start.getFullYear(), start.getMonth() + i, start.getDate(), start.getHours(), start.getMinutes());
+      s = new Date(start.getFullYear(), start.getMonth() + i * stepMonths, start.getDate(), start.getHours(), start.getMinutes());
       if (s.getDate() !== start.getDate()) continue;
     }
     if (s >= to || (until && s >= until)) break;
     if (ev.recurrence === 'weekdays' && (s.getDay() === 0 || s.getDay() === 6)) continue;
+    if (skip.has(dayKey(s))) continue;
     const e = new Date(s.getTime() + dur);
     if (e > from) out.push({ ev, start: s, end: e });
   }
@@ -186,6 +189,27 @@ async function main() {
     }
   }
 
+  // 4. Planning Excel bientôt terminé : rappel hebdomadaire le matin (14 derniers jours et après).
+  const workSent = { ...(meta.workSent || {}) };
+  if (hour >= MORNING_HOUR && hour < MORNING_LAST_HOUR) {
+    for (const u of users.values()) {
+      if (!subs.has(u.id) || !u.work_until) continue;
+      const end = new Date(`${u.work_until}T00:00:00`);
+      const left = Math.round((end - today) / 864e5);
+      const lastSent = workSent[u.id] ? new Date(`${workSent[u.id]}T00:00:00`) : null;
+      if (left > 14 || left < -30 || (lastSent && today - lastSent < 7 * 864e5)) continue;
+      outbox.push({
+        uid: u.id,
+        title: 'Planning de travail à mettre à jour',
+        body: left < 0
+          ? `Ton planning importé s’est terminé le ${fmtDay(end)} : importe le nouveau fichier Excel.`
+          : `Ton planning importé s’arrête le ${fmtDay(end)} (dans ${left} jour${left > 1 ? 's' : ''}) : pense à importer le nouveau fichier Excel.`,
+        tag: 'planning-excel',
+      });
+      workSent[u.id] = dayKey(today);
+    }
+  }
+
   // Envoi à tous les appareils ; les abonnements expirés sont supprimés.
   let sent = 0;
   for (const n of outbox) {
@@ -200,7 +224,7 @@ async function main() {
     }
   }
 
-  await metaRef.set({ lastRun: admin.firestore.Timestamp.fromDate(now), morningSent }, { merge: true });
+  await metaRef.set({ lastRun: admin.firestore.Timestamp.fromDate(now), morningSent, workSent }, { merge: true });
   console.log(`${now.toISOString()} — ${outbox.length} notification(s), ${sent} envoi(s), ${subs.size} utilisateur(s) abonné(s)`);
 }
 

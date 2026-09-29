@@ -9,6 +9,7 @@ rules_version = '2';
 //   events/{id}          événements ; un événement privé n'y contient ni titre, ni lieu, ni notes
 //   eventSecrets/{id}    détails des événements privés, lisibles par leur seul auteur
 //   remoteDays/{uid}     jours de télétravail
+//   listItems/{id}       liste partagée (courses, tâches)
 //   pushSubs/{id}        abonnements aux notifications d'un appareil (lus par la tâche d'envoi)
 //   notifMeta/…          état de la tâche d'envoi (accès serveur uniquement)
 service cloud.firestore {
@@ -28,7 +29,10 @@ service cloud.firestore {
 
     // Profils ---------------------------------------------------------------
     function validProfile(d) {
-      return d.keys().hasOnly(['display_name', 'color', 'partner_id', 'invite_code', 'work_name', 'shift_types', 'notif'])
+      return d.keys().hasOnly(['display_name', 'color', 'partner_id', 'invite_code', 'work_name', 'shift_types', 'notif',
+                               'work_until'])
+        // Dernier jour du planning Excel importé (rappel quand il arrive à sa fin).
+        && optStr(d, 'work_until', 10)
         // Préférences de notifications : { reminders, reminderMin, partner, morning }.
         && (d.get('notif', null) == null || d.notif is map)
         // Types d'horaires personnels (ouverture, fermeture…) : au plus 12.
@@ -77,7 +81,9 @@ service cloud.firestore {
     function validEvent(d) {
       return d.keys().hasOnly(['owner_id', 'title', 'notes', 'location', 'start_at', 'end_at', 'all_day',
                                'category', 'is_private', 'recurrence', 'recurrence_until', 'import_key',
-                               'updated_at', 'updated_by'])
+                               'updated_at', 'updated_by', 'exdates'])
+        // Dates retirées d'une série répétée (« modifier / supprimer cette date seulement »).
+        && (d.get('exdates', null) == null || (d.exdates is list && d.exdates.size() <= 500))
         // Auteur de la dernière modification (sert aux notifications « a ajouté / a modifié »).
         && (d.get('updated_by', null) == null || d.updated_by == request.auth.uid)
         && d.title is string && d.title.size() <= 200
@@ -85,7 +91,7 @@ service cloud.firestore {
         && d.start_at is string && d.end_at is string && d.end_at > d.start_at
         && d.all_day is bool && d.is_private is bool
         && d.category in ['pro', 'perso', 'commun']
-        && d.recurrence in ['none', 'daily', 'weekdays', 'weekly', 'monthly']
+        && d.recurrence in ['none', 'daily', 'weekdays', 'weekly', 'monthly', 'yearly']
         && optStr(d, 'recurrence_until', 10)
         // Marque des événements importés d'un planning Excel (absente sur les anciens événements).
         && (d.get('import_key', null) == null || (d.import_key is string && d.import_key.size() <= 40))
@@ -115,6 +121,26 @@ service cloud.firestore {
       allow write: if signedIn() && userId == uid()
         && request.resource.data.keys().hasOnly(['dates'])
         && request.resource.data.dates is list && request.resource.data.dates.size() <= 1000;
+    }
+
+    // Liste partagée (courses, tâches) : lisible et modifiable par les deux membres reliés.
+    function validItem(d) {
+      return d.keys().hasOnly(['owner_id', 'list', 'text', 'done', 'assignee', 'due', 'created_at', 'updated_at', 'updated_by'])
+        && d.list in ['courses', 'taches']
+        && d.text is string && d.text.size() >= 1 && d.text.size() <= 200
+        && d.done is bool
+        && optStr(d, 'assignee', 128) && optStr(d, 'due', 10)
+        && d.updated_by == request.auth.uid;
+    }
+    match /listItems/{itemId} {
+      allow read: if signedIn()
+        && (resource.data.owner_id == uid() || isMutualPartner(resource.data.owner_id));
+      allow create: if signedIn() && request.resource.data.owner_id == uid() && validItem(request.resource.data);
+      allow update: if signedIn() && validItem(request.resource.data)
+        && request.resource.data.owner_id == resource.data.owner_id
+        && (resource.data.owner_id == uid() || isMutualPartner(resource.data.owner_id));
+      allow delete: if signedIn()
+        && (resource.data.owner_id == uid() || isMutualPartner(resource.data.owner_id));
     }
 
     // Abonnements aux notifications : chacun gère uniquement ceux de ses appareils.

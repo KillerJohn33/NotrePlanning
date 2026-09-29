@@ -4,7 +4,7 @@
   'use strict';
   const cfg = window.PLANNING_CONFIG || {};
   const EVENT_FIELDS = ['title', 'notes', 'location', 'start_at', 'end_at', 'all_day', 'category',
-    'is_private', 'recurrence', 'recurrence_until', 'import_key'];
+    'is_private', 'recurrence', 'recurrence_until', 'import_key', 'exdates'];
   const pick = ev => Object.fromEntries(EVENT_FIELDS.map(k => [k, ev[k] ?? null]));
 
   /* Firebase (Auth + Firestore). Les données des deux personnes sont écoutées en
@@ -32,6 +32,7 @@
     let me = null, partner = null, invite = null;
     let myEvents = new Map(), partnerEvents = new Map(), secrets = new Map();
     let myRemote = [], partnerRemote = [];
+    let myItems = new Map(), partnerItems = new Map();
     let baseUnsubs = [], partnerUnsub = null, partnerDataUnsubs = null, inviteUnsub = null;
     let watchedPartner = null, watchedInvite = null;
     let pendingName = '';
@@ -45,7 +46,7 @@
       partnerUnsub = inviteUnsub = null;
       watchedPartner = watchedInvite = null;
       me = partner = invite = null;
-      myEvents = new Map(); secrets = new Map(); myRemote = [];
+      myEvents = new Map(); secrets = new Map(); myRemote = []; myItems = new Map();
     }
 
     function watchMine() {
@@ -54,6 +55,7 @@
         db.collection('events').where('owner_id', '==', uid).onSnapshot(s => { myEvents = toMap(s); emit(); }, onErr),
         db.collection('eventSecrets').where('owner_id', '==', uid).onSnapshot(s => { secrets = toMap(s); emit(); }, onErr),
         remoteRef(uid).onSnapshot(s => { myRemote = (s.exists && s.data().dates) || []; emit(); }, onErr),
+        db.collection('listItems').where('owner_id', '==', uid).onSnapshot(s => { myItems = toMap(s); emit(); }, onErr),
       );
     }
 
@@ -99,6 +101,8 @@
             .onSnapshot(s => { partnerEvents = toMap(s); emit(); }, onDenied),
           remoteRef(watchedPartner)
             .onSnapshot(s => { partnerRemote = (s.exists && s.data().dates) || []; emit(); }, onDenied),
+          db.collection('listItems').where('owner_id', '==', watchedPartner)
+            .onSnapshot(s => { partnerItems = toMap(s); emit(); }, onDenied),
         ];
       } else if (!ok && partnerDataUnsubs) {
         stopPartnerData();
@@ -109,6 +113,7 @@
       partnerDataUnsubs = null;
       partnerEvents = new Map();
       partnerRemote = [];
+      partnerItems = new Map();
     }
 
     // Finalise ou nettoie la liaison selon l'état (côté serveur) de l'invitation.
@@ -280,6 +285,44 @@
           await batch.commit();
         }
       },
+      // Restauration d'une sauvegarde : création groupée (les privés gardent leurs détails à part).
+      async bulkCreate(events) {
+        for (let i = 0; i < events.length; i += 200) {
+          const batch = db.batch();
+          for (const ev of events.slice(i, i + 200)) {
+            const ref = db.collection('events').doc();
+            const doc = { ...pick(ev), owner_id: uid, updated_at: FieldValue.serverTimestamp(), updated_by: uid };
+            if (doc.is_private) {
+              batch.set(secretRef(ref.id), { owner_id: uid, title: doc.title, notes: doc.notes, location: doc.location });
+              Object.assign(doc, { title: '', notes: null, location: null });
+            }
+            batch.set(ref, doc);
+          }
+          await batch.commit();
+        }
+      },
+      // Liste partagée (courses, tâches) : les éléments des deux membres reliés.
+      getListItems() {
+        const all = [...myItems.values()].map(i => ({ ...i, is_mine: true }));
+        if (isMutual()) partnerItems.forEach(i => all.push({ ...i, is_mine: false }));
+        return all;
+      },
+      async saveListItem(item) {
+        const ref = item.id ? db.collection('listItems').doc(item.id) : db.collection('listItems').doc();
+        const existing = item.id ? myItems.get(item.id) || partnerItems.get(item.id) : null;
+        await ref.set({
+          owner_id: existing ? existing.owner_id : uid,
+          list: item.list, text: item.text, done: !!item.done,
+          assignee: item.assignee || null, due: item.due || null,
+          created_at: existing?.created_at || FieldValue.serverTimestamp(),
+          updated_at: FieldValue.serverTimestamp(), updated_by: uid,
+        });
+      },
+      async deleteListItems(ids) {
+        const batch = db.batch();
+        ids.forEach(id => batch.delete(db.collection('listItems').doc(id)));
+        await batch.commit();
+      },
       // Remplace les événements importés de la période par la nouvelle liste (lots de 400 écritures max).
       async replaceImported(key, from, to, events) {
         const [a, b] = [from.toISOString(), to.toISOString()];
@@ -338,6 +381,13 @@
         },
         household: { id: 'demo', invite_code: 'DEMO2026' },
         remote: { me: [day(2), day(9)], partner: [day(4)] },
+        items: [
+          { id: uid(), owner_id: 'me', list: 'courses', text: 'Lait', done: false, assignee: null, due: null, created_at: 1 },
+          { id: uid(), owner_id: 'partner', list: 'courses', text: 'Pain', done: false, assignee: null, due: null, created_at: 2 },
+          { id: uid(), owner_id: 'me', list: 'courses', text: 'Tomates', done: true, assignee: null, due: null, created_at: 3 },
+          { id: uid(), owner_id: 'partner', list: 'taches', text: 'Réserver le restaurant', done: false, assignee: 'me', due: day(4), created_at: 4 },
+          { id: uid(), owner_id: 'me', list: 'taches', text: 'Payer la crèche', done: false, assignee: 'partner', due: day(8), created_at: 5 },
+        ],
         events: [
           ev('me', { title: 'Travail', category: 'pro', start_at: at(0, 9), end_at: at(0, 17, 30), recurrence: 'weekdays', location: 'Bureau' }),
           ev('me', { title: 'Réunion d’équipe', category: 'pro', start_at: at(1, 14), end_at: at(1, 15), recurrence: 'weekly' }),
@@ -437,6 +487,29 @@
         const del = new Set(deleteIds);
         db.events = db.events.filter(e => !(e.owner_id === 'me' && del.has(e.id)));
         events.forEach(ev => db.events.push({ id: uid(), owner_id: 'me', ...pick(ev) }));
+        persist();
+      },
+      async bulkCreate(events) {
+        events.forEach(ev => db.events.push({ id: uid(), owner_id: 'me', ...pick(ev) }));
+        persist();
+      },
+      getListItems() {
+        const linked = partnerLinked();
+        return (db.items || [])
+          .filter(i => i.owner_id === 'me' || linked)
+          .map(i => ({ ...i, is_mine: i.owner_id === 'me' }));
+      },
+      async saveListItem(item) {
+        db.items ||= [];
+        const i = item.id ? db.items.findIndex(x => x.id === item.id) : -1;
+        const row = { list: item.list, text: item.text, done: !!item.done, assignee: item.assignee || null, due: item.due || null };
+        if (i >= 0) Object.assign(db.items[i], row);
+        else db.items.push({ id: uid(), owner_id: 'me', created_at: Date.now(), ...row });
+        persist();
+      },
+      async deleteListItems(ids) {
+        const del = new Set(ids);
+        db.items = (db.items || []).filter(x => !del.has(x.id));
         persist();
       },
       async replaceImported(key, from, to, events) {

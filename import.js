@@ -194,6 +194,7 @@
     IMPORT_KEY,
     DEFAULT_HOURS: { start: '08:30', end: '17:00', permEnd: '18:00', morningEnd: '12:00', afternoonStart: '13:30' },
     nameKey,
+    loadSheetJs,
     readWorkbook,
     buildPlan,
     planToEvents,

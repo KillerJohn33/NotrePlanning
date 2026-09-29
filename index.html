@@ -72,6 +72,12 @@
   <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
+  <symbol id="i-school-bag" viewBox="0 0 24 24"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 10h8"/><path d="M8 18h8"/><path d="M8 22v-6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
   <symbol id="i-import" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></symbol>
 </svg>
 
@@ -105,7 +111,9 @@
       <button class="icon-btn" id="nextBtn" aria-label="Suivant"><svg class="i"><use href="#i-right"/></svg></button>
       <h1 id="period"></h1>
     </div>
+    <button class="icon-btn" id="searchBtn" aria-label="Rechercher"><svg class="i"><use href="#i-search"/></svg></button>
   </header>
+  <div id="workAlert" class="work-alert" hidden></div>
 
   <div class="filters">
     <div class="filter-row">
@@ -127,6 +135,7 @@
       <button class="tab" data-view="agenda"><svg class="i"><use href="#i-agenda"/></svg><span>Agenda</span></button>
       <button class="tab" data-view="week"><svg class="i"><use href="#i-week"/></svg><span>Semaine</span></button>
       <button class="tab" data-view="month"><svg class="i"><use href="#i-month"/></svg><span>Mois</span></button>
+      <button class="tab" data-view="lists"><svg class="i"><use href="#i-list"/></svg><span>Listes</span></button>
       <button class="tab" id="remoteBtn" type="button"><svg class="i"><use href="#i-clock"/></svg><span>Horaires</span></button>
       <button class="tab" id="settingsBtn" type="button"><svg class="i"><use href="#i-settings"/></svg><span>Réglages</span></button>
     </div>
@@ -143,6 +152,10 @@
     </div>
     <fieldset id="evFields" class="dlg-body">
       <p id="evOwner" class="owner-note" hidden></p>
+      <div class="seg scope-seg" id="evScope" role="group" aria-label="Portée de la modification" hidden>
+        <button type="button" data-scope="one">Cette date seulement</button>
+        <button type="button" data-scope="all">Toute la série</button>
+      </div>
       <div class="presets" id="evPresets" role="group" aria-label="Suggestions"></div>
       <input name="title" class="input title-input" placeholder="Titre" required maxlength="200" autocomplete="off" aria-label="Titre">
       <div class="seg cat-seg" role="radiogroup" aria-label="Type">
@@ -167,6 +180,7 @@
             <option value="weekdays">Du lundi au vendredi</option>
             <option value="weekly">Toutes les semaines</option>
             <option value="monthly">Tous les mois</option>
+            <option value="yearly">Tous les ans</option>
           </select>
         </label>
         <label class="field" id="untilRow">Jusqu’au (optionnel)<input type="date" name="recurrence_until"></label>
@@ -197,6 +211,18 @@
     <button type="button" class="btn" id="dayAgenda"><svg class="i"><use href="#i-agenda"/></svg>Voir dans l’agenda</button>
     <span class="spacer"></span>
     <button type="button" class="btn primary" id="dayAdd"><svg class="i"><use href="#i-plus"/></svg>Ajouter</button>
+  </div>
+</dialog>
+
+<!-- Recherche -->
+<dialog id="searchDlg" aria-labelledby="searchDlgTitle">
+  <div class="dlg-head">
+    <h2 id="searchDlgTitle"><svg class="i"><use href="#i-search"/></svg> Rechercher</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Fermer"><svg class="i"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="dlg-body">
+    <input id="searchInput" class="input" type="search" placeholder="Titre, lieu, notes…" autocomplete="off" aria-label="Rechercher">
+    <div id="searchResults" class="search-results"></div>
   </div>
 </dialog>
 

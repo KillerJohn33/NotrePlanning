@@ -25,14 +25,14 @@
     { title: 'Sport', icon: 'sport', cat: 'perso', min: 60 },
     { title: 'Courses', icon: 'cart', cat: 'commun', min: 60 },
     { title: 'Famille & amis', icon: 'users', cat: 'commun', min: 180 },
-    { title: 'Anniversaire', icon: 'cake', cat: 'commun', allDay: true },
+    { title: 'Anniversaire', icon: 'cake', cat: 'commun', allDay: true, yearly: true },
     { title: 'Vacances', icon: 'plane', cat: 'commun', allDay: true },
     { title: 'Réunion', icon: 'pro', cat: 'pro', min: 60 },
   ];
   const normTitle = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   // Icône d'une suggestion si le titre commence par son nom (« Médecin – Dr X » → stéthoscope).
   const presetIcon = title => PRESETS.find(p => normTitle(title).startsWith(normTitle(p.title)))?.icon;
-  const RECUR_LABEL = { daily: 'Tous les jours', weekdays: 'Lun–ven', weekly: 'Chaque semaine', monthly: 'Chaque mois' };
+  const RECUR_LABEL = { daily: 'Tous les jours', weekdays: 'Lun–ven', weekly: 'Chaque semaine', monthly: 'Chaque mois', yearly: 'Chaque année' };
   const HOUR_PX = 48;
   const FREE_WINDOW = [7 * 60, 23 * 60]; // créneaux "libres ensemble" cherchés entre 7h et 23h
   const FREE_MIN = 60;                   // durée minimale d'un créneau libre (minutes)
@@ -71,20 +71,26 @@
       return end > from && start < to ? [{ ev, start, end }] : [];
     }
     const until = ev.recurrence_until ? addDays(fromInputs(ev.recurrence_until), 1) : null;
+    const skip = new Set(ev.exdates || []); // dates retirées de la série (modifiées ou supprimées à part)
     const stepDays = { daily: 1, weekdays: 1, weekly: 7 }[ev.recurrence];
+    const stepMonths = ev.recurrence === 'yearly' ? 12 : 1;
     let i = 0;
     if (stepDays) i = Math.max(0, Math.floor((from - start - dur) / (stepDays * 864e5)) - 1);
-    else i = Math.max(0, (from.getFullYear() - start.getFullYear()) * 12 + from.getMonth() - start.getMonth() - 2);
+    else {
+      const monthsBetween = (from.getFullYear() - start.getFullYear()) * 12 + from.getMonth() - start.getMonth();
+      i = Math.max(0, Math.floor(monthsBetween / stepMonths) - 2);
+    }
     const out = [];
     for (let guard = 0; guard < 1000; guard++, i++) {
       let s;
       if (stepDays) s = addDays(start, i * stepDays);
       else {
-        s = new Date(start.getFullYear(), start.getMonth() + i, start.getDate(), start.getHours(), start.getMinutes());
-        if (s.getDate() !== start.getDate()) continue; // ex. 31 dans un mois de 30 jours
+        s = new Date(start.getFullYear(), start.getMonth() + i * stepMonths, start.getDate(), start.getHours(), start.getMinutes());
+        if (s.getDate() !== start.getDate()) continue; // ex. 31 dans un mois de 30 jours, 29 février
       }
       if (s >= to || (until && s >= until)) break;
       if (ev.recurrence === 'weekdays' && (s.getDay() === 0 || s.getDay() === 6)) continue;
+      if (skip.has(toDateInput(s))) continue;
       const e = new Date(s.getTime() + dur);
       if (e > from) out.push({ ev, start: s, end: e });
     }
@@ -185,6 +191,80 @@
   }
   const holidayTag = d => { const h = holidayName(d); return h ? `<span class="tag hol-tag">${ic('flag')} ${esc(h)}</span>` : ''; };
 
+  // Vacances scolaires de la zone choisie (A, B ou C) : calendrier officiel de l'Éducation
+  // nationale (data.education.gouv.fr), mis en cache une semaine sur l'appareil.
+  const ZONE_KEY = 'notre-planning-zone';
+  let schoolZone = (() => { try { return localStorage.getItem(ZONE_KEY) || ''; } catch { return ''; } })();
+  let schoolHolidays = []; // [{ name, from: 'AAAA-MM-JJ', to: 'AAAA-MM-JJ' (exclu) }]
+  async function loadSchoolHolidays(force = false) {
+    schoolHolidays = [];
+    if (!schoolZone) return;
+    const cacheKey = `notre-planning-vacances-${schoolZone}`;
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+      if (cached && !force && Date.now() - cached.at < 7 * 864e5) { schoolHolidays = cached.list; return; }
+    } catch { /* cache illisible : on recharge */ }
+    const where = `zones="Zone ${schoolZone}" and end_date>="${toDateInput(addDays(new Date(), -400))}" and population!="Enseignants"`;
+    const url = 'https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records'
+      + `?select=description,start_date,end_date&where=${encodeURIComponent(where)}`
+      + '&group_by=description,start_date,end_date&order_by=start_date&limit=100';
+    try {
+      const data = await (await fetch(url)).json();
+      schoolHolidays = data.results.map(r => {
+        const from = new Date(r.start_date);
+        const to = new Date(r.end_date);
+        return { name: r.description, from: toDateInput(from), to: toDateInput(to > from ? to : addDays(from, 1)) };
+      });
+      try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), list: schoolHolidays })); } catch { /* ignoré */ }
+    } catch (err) { console.error(err); }
+  }
+  const schoolHolidayOf = d => { const k = toDateInput(d); return schoolHolidays.find(h => h.from <= k && k < h.to); };
+  const shortSchoolName = name => name.replace(/^(début des )?vacances (de la |de l'|de |d'|d’)?/i, '').replace(/^./, c => c.toUpperCase());
+  const schoolTag = d => {
+    const h = schoolHolidayOf(d);
+    return h ? `<span class="tag school-tag">${ic('school-bag')} ${esc(h.name)} (zone ${schoolZone})</span>` : '';
+  };
+  // Bande turquoise des vacances scolaires, continue d'une case à l'autre (vue mois).
+  function schoolRibbon(d, lastOfMonth) {
+    const h = schoolHolidayOf(d);
+    if (!h) return '';
+    const k = toDateInput(d);
+    const first = k === h.from;
+    const last = toDateInput(addDays(d, 1)) === h.to;
+    const rowStart = first || d.getDay() === 1 || d.getDate() === 1;
+    return `<div class="school-bar${first ? ' is-first' : ''}${last || lastOfMonth || d.getDay() === 0 ? ' is-last' : ''}" title="${esc(h.name)} (zone ${schoolZone})">`
+      + (rowStart ? `${ic('school-bag')}<span>${esc(shortSchoolName(h.name))}</span>` : '') + '</div>';
+  }
+
+  // Rappel quand le planning Excel importé arrive à sa fin (dans moins de 14 jours).
+  const WORK_ALERT_KEY = 'notre-planning-work-alert';
+  function renderWorkAlert() {
+    const box = $('#workAlert');
+    const until = state.me?.work_until;
+    const left = until ? Math.round((fromInputs(until) - startOfDay(new Date())) / 864e5) : null;
+    let dismissed = '';
+    try { dismissed = localStorage.getItem(WORK_ALERT_KEY) || ''; } catch { /* ignoré */ }
+    const show = left !== null && left <= 14 && dismissed !== toDateInput(new Date());
+    box.hidden = !show;
+    if (!show) return;
+    const when = left < 0 ? `s’est terminé le ${fmt(fromInputs(until), { day: 'numeric', month: 'long' })}`
+      : `s’arrête le ${fmt(fromInputs(until), { day: 'numeric', month: 'long' })} (dans ${left} jour${left > 1 ? 's' : ''})`;
+    box.innerHTML = `${ic('import')}<span>Ton planning de travail importé ${when}.</span>
+      <button class="btn" data-act="work-import">Importer le nouveau</button>
+      <button class="icon-btn sm" data-act="work-dismiss" aria-label="Masquer pour aujourd’hui">${ic('x')}</button>`;
+  }
+  // Anciens imports (avant ce rappel) : on retrouve la date de fin et on la mémorise.
+  async function ensureWorkUntil() {
+    if (store.mode === 'demo' || !state.me || state.me.work_until) return;
+    const imported = (await store.listEvents(new Date(1900, 0, 1), new Date(2200, 0, 1)))
+      .filter(e => e.is_mine && e.import_key === PlanningImport.IMPORT_KEY);
+    if (!imported.length) return;
+    const last = imported.reduce((m, e) => (e.start_at > m ? e.start_at : m), '');
+    const work_until = toDateInput(new Date(last));
+    await store.updateMe({ work_until });
+    state.me.work_until = work_until;
+  }
+
   // Types d'horaires (ouverture, milieu, fermeture…) propres à chaque profil ; les jours
   // placés deviennent des créneaux pro marqués import_key = "shift:<id du type>".
   const SHIFT_PREFIX = 'shift:';
@@ -271,6 +351,7 @@
   }
 
   function step(dir) {
+    if (state.view === 'lists') return;
     if (state.view === 'month') {
       const v = visibleMonth();
       return goToMonth(new Date(v.getFullYear(), v.getMonth() + dir, 1));
@@ -344,8 +425,10 @@
     renderToolbar();
     const main = $('#main');
     main.className = `main view-${state.view}`;
+    $('#app').dataset.view = state.view;
     if (state.view === 'week') renderWeek(main);
     else if (state.view === 'month') renderMonth(main);
+    else if (state.view === 'lists') renderLists(main);
     else renderAgenda(main);
     if (dayDlg.open) renderDay(); // la fiche du jour suit les changements (partenaire, filtres…)
   }
@@ -354,7 +437,8 @@
     const { from, to } = state.range;
     const last = addDays(to, -1);
     let label;
-    if (state.view === 'month') label = cap(fmt(state.cursor, { month: 'long', year: 'numeric' })); // affiné au défilement
+    if (state.view === 'lists') label = 'Listes partagées';
+    else if (state.view === 'month') label = cap(fmt(state.cursor, { month: 'long', year: 'numeric' })); // affiné au défilement
     else if (from.getMonth() === last.getMonth()) label = `${from.getDate()} – ${last.getDate()} ${fmt(last, { month: 'long', year: 'numeric' })}`;
     else {
       const year = last.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {};
@@ -363,6 +447,7 @@
     $('#period').textContent = label;
 
     $$('#viewSeg [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
+    renderWorkAlert();
     $$('#catChips [data-cat]').forEach(b => b.setAttribute('aria-pressed', String(!!state.cats[b.dataset.cat])));
 
     const whoSeg = $('#whoSeg');
@@ -414,7 +499,8 @@
     let html = `<div class="wk-scroll"><div class="wk-sticky"><div class="wk-row" style="grid-template-columns:${cols}"><div class="wk-corner"></div>`;
     for (const d of dates) {
       const hol = holidayName(d);
-      html += `<button class="wk-day ${sameDay(d, now) ? 'is-today' : ''} ${hol ? 'is-holiday' : ''}" data-goto="${toDateInput(d)}" title="${esc(hol || 'Détail du jour')}">
+      const school = schoolHolidayOf(d);
+      html += `<button class="wk-day ${sameDay(d, now) ? 'is-today' : ''} ${hol ? 'is-holiday' : ''} ${school ? 'is-school' : ''}" data-goto="${toDateInput(d)}" title="${esc(hol || (school && `${school.name} (zone ${schoolZone})`) || 'Détail du jour')}">
         <span>${fmt(d, { weekday: 'short' })} ${remoteBadge(d)}${permBadge(d, occ)}</span><strong>${d.getDate()}</strong>${hol ? `<em class="hol">${esc(hol)}</em>` : ''}</button>`;
     }
     html += '</div>';
@@ -430,7 +516,7 @@
       html += `<div class="wk-row wk-allday" style="grid-template-columns:${cols}"><div class="wk-label wk-corner">Journée</div>`;
       for (const d of dates) {
         const items = allDay.filter(o => o.start < addDays(d, 1) && o.end > d);
-        html += `<div>${items.map(o => `<button class="chip-ev ${isOff(o.ev) ? 'is-off' : ''}" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${ic(CATS[o.ev.category].icon)} ${esc(o.ev.title)}</button>`).join('')}</div>`;
+        html += `<div>${items.map(o => `<button class="chip-ev ${isOff(o.ev) ? 'is-off' : ''}" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${ic(CATS[o.ev.category].icon)} ${esc(o.ev.title)}</button>`).join('')}</div>`;
       }
       html += '</div>';
     }
@@ -492,7 +578,7 @@
     const short = g.height < 34;
     const time = `${fmtTime(o.start)} – ${fmtTime(o.end)}`;
     const tip = `${ev.title} · ${time}${state.partner ? ` · ${nameOf(ev)}` : ''}${ev.location ? ` · ${ev.location}` : ''}`;
-    return `<button class="ev ${isMasked(ev) ? 'is-masked' : ''} ${short ? 'is-short' : ''}" data-ev="${ev.id}"
+    return `<button class="ev ${isMasked(ev) ? 'is-masked' : ''} ${short ? 'is-short' : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}"
       style="top:${g.top}px;height:${g.height - 2}px;left:calc(${g.left}% + 2px);width:calc(${g.width}% - 4px);--c:${esc(colorOf(ev))}"
       title="${esc(tip)}"><span class="ev-title">${iconOf(ev, o.start)} ${esc(ev.title)}</span><span class="ev-time">${time}</span></button>`;
   }
@@ -543,10 +629,10 @@
         const items = all.filter(o => !isOff(o.ev));
         const hol = holidayName(d);
         html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? 'is-off' : ''} ${hol ? 'is-holiday' : ''}" data-goto="${toDateInput(d)}"${hol ? ` title="${esc(hol)}"` : ''}>
-          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, d, day === nDays)}<div class="mo-events">`;
+          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${schoolRibbon(d, day === nDays)}${offRibbon(off, d, day === nDays)}<div class="mo-events">`;
         for (const o of items.slice(0, max)) {
           const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
-          html += `<button class="mo-ev" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}"><i></i><span>${time}${esc(o.ev.title)}</span></button>`;
+          html += `<button class="mo-ev" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}"><i></i><span>${time}${esc(o.ev.title)}</span></button>`;
         }
         html += `</div>${items.length > max ? `<span class="mo-more">+${items.length - max} autre${items.length - max > 1 ? 's' : ''}</span>` : ''}</div>`;
       }
@@ -601,7 +687,7 @@
         .filter(o => o.start < dEnd && o.end > d)
         .sort((a, b) => (b.ev.all_day - a.ev.all_day) || (a.start - b.start));
       html += `<section class="ag-day"><header class="ag-date"><span class="ag-dow">${fmt(d, { weekday: 'long' })}</span>
-        <span class="ag-dnum">${fmt(d, { day: 'numeric', month: 'long' })}</span>${sameDay(d, today) ? '<span class="badge">Aujourd’hui</span>' : ''}${holidayTag(d)}${dayRemoteNote(d, items)}</header>`;
+        <span class="ag-dnum">${fmt(d, { day: 'numeric', month: 'long' })}</span>${sameDay(d, today) ? '<span class="badge">Aujourd’hui</span>' : ''}${holidayTag(d)}${schoolTag(d)}${dayRemoteNote(d, items)}</header>`;
       if (items.length) {
         html += '<div class="ag-list">' + items.map(o => agendaItem(o, d, dEnd)).join('') + '</div>';
       } else {
@@ -632,8 +718,11 @@
     if (!perm && !remote && !shift) tags.push(`<span class="tag tag-cat" data-cat="${ev.category}">${ic(CATS[ev.category].icon)} ${CATS[ev.category].label}</span>`);
     if (ev.is_private) tags.push(`<span class="tag">${ic('lock')} Privé</span>`);
     if (ev.recurrence && ev.recurrence !== 'none') tags.push(`<span class="tag">${ic('repeat')} ${RECUR_LABEL[ev.recurrence]}</span>`);
+    // Anniversaire saisi avec la date de naissance comme début : âge atteint ce jour-là.
+    const age = ev.recurrence === 'yearly' ? o.start.getFullYear() - new Date(ev.start_at).getFullYear() : 0;
+    if (age > 0) tags.push(`<span class="tag">${ic('cake')} ${age} ans</span>`);
     if (ev.location) tags.push(`<span class="tag">${ic('pin')} ${esc(ev.location)}</span>`);
-    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isOff(ev) ? 'is-off' : ''}" data-ev="${ev.id}" style="--c:${esc(colorOf(ev))}">
+    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isOff(ev) ? 'is-off' : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
       <span class="ag-time">${time}</span><span class="ag-bar"></span>
       <span class="ag-body"><strong>${esc(ev.title)}</strong><span class="ag-meta">${tags.join('')}</span></span></button>`;
   }
@@ -643,11 +732,14 @@
   const evForm = $('#eventForm');
   const F = evForm.elements;
   let editing = null;
+  let editingOcc = null;   // date de l'occurrence cliquée (événements répétés)
+  let editScope = 'all';
   let formStart = null;
 
-  function openEvent(id) {
-    const ev = state.events.find(e => e.id === id);
-    if (ev) fillEventForm(ev);
+  function openEvent(id, occMs) {
+    // Hors de la période affichée (résultat de recherche), l'événement vient de la recherche.
+    const ev = state.events.find(e => e.id === id) || searchPool.find(e => e.id === id);
+    if (ev) fillEventForm(ev, occMs ? new Date(Number(occMs)) : null);
   }
 
   function newEvent(start) {
@@ -665,8 +757,10 @@
     });
   }
 
-  function fillEventForm(ev) {
+  function fillEventForm(ev, occ = null) {
     editing = ev;
+    const repeated = !!(ev.id && ev.recurrence && ev.recurrence !== 'none');
+    editingOcc = repeated ? occ : null;
     const readOnly = !canEdit(ev);
     const s = new Date(ev.start_at);
     const e = new Date(ev.end_at);
@@ -699,10 +793,150 @@
     $('#evImportNote').hidden = ev.import_key !== PlanningImport.IMPORT_KEY;
     $('#privateRow').hidden = !state.partner && !ev.is_private;
     renderPresets(!ev.id);
+    // Série ouverte depuis une date : on propose « cette date seulement » par défaut.
+    $('#evScope').hidden = !(editingOcc && !readOnly);
+    F.recurrence.closest('.row').hidden = false;
+    setScope(editingOcc ? 'one' : 'all');
     syncEventForm();
     evDlg.showModal();
     // Sur téléphone, pas de clavier d'emblée : on laisse voir les suggestions.
     if (!ev.id && !narrowMq.matches) F.title.focus();
+  }
+
+  /* Listes partagées (courses, tâches) ----------------------------------------------- */
+  const LISTS = { courses: { label: 'Courses', icon: 'cart', placeholder: 'Ajouter un article…' },
+    taches: { label: 'Tâches', icon: 'list', placeholder: 'Ajouter une tâche…' } };
+  let currentList = (() => { try { return localStorage.getItem('notre-planning-list') || 'courses'; } catch { return 'courses'; } })();
+  let showDone = false;
+  const tsOf = v => v?.toMillis?.() ?? v ?? 0;
+  const personName = id => (!id ? '' : id === state.user?.id || id === 'me' ? 'Moi' : state.partner?.display_name || 'Partenaire');
+  const personColor = id => (id === state.user?.id || id === 'me' ? state.me?.color : state.partner?.color) || 'var(--muted)';
+  const meId = () => state.user?.id;
+
+  function renderLists(main) {
+    // Une mise à jour en direct (l'autre coche un article) ne doit pas effacer la saisie en cours.
+    const input = $('#listAdd [name=text]', main);
+    const draft = input?.value || '';
+    const hadFocus = !!input && document.activeElement === input;
+    const items = store.getListItems().filter(i => i.list === currentList);
+    const todo = items.filter(i => !i.done).sort((a, b) => tsOf(a.created_at) - tsOf(b.created_at));
+    const done = items.filter(i => i.done).sort((a, b) => tsOf(b.updated_at || b.created_at) - tsOf(a.updated_at || a.created_at));
+    const tasks = currentList === 'taches';
+    const partnerId = state.partner?.id;
+    const assignOpts = [['', 'Personne'], [meId(), 'Moi'], ...(partnerId ? [[partnerId, state.partner.display_name]] : [])];
+    const row = i => {
+      const due = i.due ? fromInputs(i.due) : null;
+      const late = due && !i.done && due < startOfDay(new Date());
+      const meta = [
+        i.assignee ? `<span class="tag"><span class="dot" style="--c:${esc(personColor(i.assignee))}"></span>${esc(personName(i.assignee))}</span>` : '',
+        due ? `<span class="tag ${late ? 'is-late' : ''}">${ic('month')} ${fmt(due, { weekday: 'short', day: 'numeric', month: 'short' })}</span>` : '',
+        state.partner && !i.is_mine && !tasks ? `<span class="tag">ajouté par ${esc(state.partner.display_name)}</span>` : '',
+      ].join('');
+      return `<li class="li-item ${i.done ? 'is-done' : ''}" data-item="${esc(i.id)}">
+        <button class="li-check" data-act="toggle" aria-label="${i.done ? 'Décocher' : 'Cocher'}" aria-pressed="${i.done}"></button>
+        <span class="li-body"><span class="li-text">${esc(i.text)}</span>${meta ? `<span class="ag-meta">${meta}</span>` : ''}</span>
+        <button class="icon-btn sm li-del" data-act="del" aria-label="Supprimer">${ic('x')}</button></li>`;
+    };
+    main.innerHTML = `<div class="lists">
+      <div class="seg list-seg" role="group" aria-label="Liste">${Object.entries(LISTS).map(([k, l]) =>
+        `<button data-list="${k}" aria-pressed="${k === currentList}">${ic(l.icon)}${l.label}</button>`).join('')}</div>
+      <form id="listAdd" class="list-add">
+        <input class="input" name="text" maxlength="200" placeholder="${LISTS[currentList].placeholder}" autocomplete="off" required aria-label="${LISTS[currentList].placeholder}">
+        ${tasks ? `<div class="row list-opts">
+          <label class="field">Qui s’en charge<select name="assignee">${assignOpts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select></label>
+          <label class="field">Pour le (optionnel)<input type="date" name="due"></label></div>` : ''}
+        <button class="btn primary">${ic('plus')} Ajouter</button>
+      </form>
+      ${todo.length ? `<ul class="li-list">${todo.map(row).join('')}</ul>`
+        : `<p class="ag-empty">${tasks ? 'Aucune tâche en cours.' : 'La liste de courses est vide.'}</p>`}
+      ${done.length ? `<div class="li-done-head">
+          <button class="link" data-act="show-done">${showDone ? 'Masquer' : 'Afficher'} les éléments cochés (${done.length})</button>
+          <button class="link danger" data-act="clear-done">${ic('trash')} Tout effacer</button></div>
+        ${showDone ? `<ul class="li-list">${done.map(row).join('')}</ul>` : ''}` : ''}
+      ${state.partner ? '' : '<p class="muted list-hint">Relie ton compte à celui de ta moitié (⚙ Réglages) pour partager ces listes.</p>'}
+    </div>`;
+    const fresh = $('#listAdd [name=text]', main);
+    if (draft) fresh.value = draft;
+    if (hadFocus) fresh.focus();
+  }
+
+  async function onListsClick(e) {
+    const seg = e.target.closest('[data-list]');
+    if (seg) {
+      currentList = seg.dataset.list;
+      try { localStorage.setItem('notre-planning-list', currentList); } catch { /* ignoré */ }
+      return render();
+    }
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (!act) return;
+    const items = store.getListItems().filter(i => i.list === currentList);
+    try {
+      if (act === 'show-done') { showDone = !showDone; return render(); }
+      if (act === 'clear-done') {
+        const ids = items.filter(i => i.done).map(i => i.id);
+        if (ids.length && confirm(`Effacer ${ids.length} élément(s) coché(s) ?`)) await store.deleteListItems(ids);
+      } else {
+        const item = items.find(i => i.id === e.target.closest('[data-item]')?.dataset.item);
+        if (!item) return;
+        if (act === 'toggle') await store.saveListItem({ ...item, done: !item.done });
+        if (act === 'del') await store.deleteListItems([item.id]);
+      }
+    } catch (err) { toastError(err); }
+    render();
+  }
+
+  async function onListAdd(e) {
+    if (e.target.id !== 'listAdd') return;
+    e.preventDefault();
+    const f = e.target.elements;
+    const text = f.text.value.trim();
+    if (!text) return;
+    try {
+      await store.saveListItem({ list: currentList, text, done: false, assignee: f.assignee?.value || null, due: f.due?.value || null });
+    } catch (err) { return toastError(err); }
+    f.text.value = '';
+    render();
+    $('#listAdd [name=text]')?.focus(); // saisie à la chaîne
+  }
+
+  /* Recherche ------------------------------------------------------------------------- */
+  const searchDlg = $('#searchDlg');
+  let searchPool = [];
+
+  async function openSearch() {
+    // Tous les événements accessibles (les tiens et ceux de l'autre), toutes dates confondues.
+    try { searchPool = await store.listEvents(new Date(1900, 0, 1), new Date(2200, 0, 1)); } catch (err) { return toastError(err); }
+    $('#searchInput').value = '';
+    $('#searchResults').innerHTML = '<p class="muted">Tape un mot du titre, du lieu ou des notes.</p>';
+    searchDlg.showModal();
+    $('#searchInput').focus();
+  }
+
+  function runSearch() {
+    const q = normTitle($('#searchInput').value);
+    const box = $('#searchResults');
+    if (q.length < 2) {
+      box.innerHTML = '<p class="muted">Tape au moins 2 lettres.</p>';
+      return;
+    }
+    const today = startOfDay(new Date());
+    const hits = searchPool
+      .filter(ev => !isMasked(ev) && [ev.title, ev.location, ev.notes].some(t => normTitle(t).includes(q)))
+      .map(ev => {
+        // Prochaine date (ou dernière passée) pour les séries.
+        const next = occurrences(ev, today, addDays(today, 800))[0];
+        const start = next ? next.start : new Date(ev.start_at);
+        return { ev, start, upcoming: start >= today };
+      })
+      .sort((a, b) => (b.upcoming - a.upcoming) || (a.upcoming ? a.start - b.start : b.start - a.start))
+      .slice(0, 60);
+    box.innerHTML = hits.length
+      ? hits.map(({ ev, start }) => `<button class="search-hit" data-ev="${ev.id}" data-occ="${start.getTime()}" style="--c:${esc(colorOf(ev))}">
+          <span class="ag-bar"></span>
+          <span><strong>${esc(ev.title)}</strong>
+          <small>${cap(fmt(start, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }))}${ev.all_day ? '' : ` · ${fmtTime(start)}`}${ev.recurrence !== 'none' ? ` · ${RECUR_LABEL[ev.recurrence]}` : ''}${ev.location ? ` · ${esc(ev.location)}` : ''}</small></span>
+        </button>`).join('')
+      : '<p class="muted">Aucun événement trouvé.</p>';
   }
 
   /* Détail d'une journée -------------------------------------------------------------- */
@@ -722,7 +956,7 @@
     const items = occ.sort((a, b) => (b.ev.all_day - a.ev.all_day) || (a.start - b.start));
     const year = d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {};
     $('#dayDlgTitle').textContent = cap(fmt(d, { weekday: 'long', day: 'numeric', month: 'long', ...year }));
-    const badges = `${sameDay(d, new Date()) ? '<span class="badge">Aujourd’hui</span>' : ''}${holidayTag(d)}${dayRemoteNote(d, items)}`;
+    const badges = `${sameDay(d, new Date()) ? '<span class="badge">Aujourd’hui</span>' : ''}${holidayTag(d)}${schoolTag(d)}${dayRemoteNote(d, items)}`;
     let html = badges ? `<div class="day-badges">${badges}</div>` : '';
     html += items.length
       ? `<div class="ag-list">${items.map(o => agendaItem(o, d, dEnd)).join('')}</div>`
@@ -743,7 +977,10 @@
       `<button type="button" class="preset" data-preset="${i}" data-cat="${p.cat}">${ic(p.icon)}${esc(p.title)}</button>`).join('');
   }
   function applyPreset(p) {
-    F.title.value = p.title;
+    // Anniversaire : « Anniversaire de … » répété chaque année ; on place le curseur pour le prénom.
+    F.title.value = p.yearly ? `${p.title} de ` : p.title;
+    F.recurrence.value = p.yearly ? 'yearly' : 'none';
+    if (p.yearly) setTimeout(() => { F.title.focus(); F.title.setSelectionRange(99, 99); }, 0);
     F.category.value = p.cat;
     F.all_day.checked = !!p.allDay;
     const start = fromInputs(F.start_date.value, F.start_time.value || '09:00');
@@ -804,7 +1041,13 @@
       recurrence_until: recurrence !== 'none' && F.recurrence_until.value ? F.recurrence_until.value : null,
     };
     await withBusy($('#evSave'), async () => {
-      await store.saveEvent(ev);
+      if (onlyThisDate()) {
+        // Cette date seulement : un événement indépendant la remplace, retirée de la série.
+        await store.saveEvent({ ...ev, id: null, recurrence: 'none', recurrence_until: null, exdates: null });
+        await store.saveEvent(withExdate(editing, editingOcc));
+      } else {
+        await store.saveEvent({ ...ev, exdates: editing.exdates || null });
+      }
       evDlg.close();
       toast(ev.id ? 'Événement modifié' : 'Événement ajouté');
       load();
@@ -813,14 +1056,38 @@
 
   async function deleteEvent() {
     if (!editing?.id) return;
+    const one = onlyThisDate();
     const series = editing.recurrence && editing.recurrence !== 'none';
-    if (!confirm(series ? 'Supprimer toute la série d’événements ?' : 'Supprimer cet événement ?')) return;
+    const question = one ? `Supprimer l’événement du ${fmt(editingOcc, { day: 'numeric', month: 'long' })} seulement ?`
+      : series ? 'Supprimer toute la série d’événements ?' : 'Supprimer cet événement ?';
+    if (!confirm(question)) return;
     await withBusy($('#evDelete'), async () => {
-      await store.deleteEvent(editing.id);
+      if (one) await store.saveEvent(withExdate(editing, editingOcc));
+      else await store.deleteEvent(editing.id);
       evDlg.close();
       toast('Événement supprimé');
       load();
     });
+  }
+
+  // Série répétée ouverte sur une date précise, avec « Cette date seulement » choisi.
+  const onlyThisDate = () => !!(editing?.id && editing.recurrence !== 'none' && editingOcc && editScope === 'one');
+  const withExdate = (series, occ) => ({ ...series, exdates: [...new Set([...(series.exdates || []), toDateInput(occ)])] });
+
+  // Portée d'une modification de série : cette date seulement, ou toute la série.
+  function setScope(scope) {
+    editScope = scope;
+    $$('#evScope [data-scope]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.scope === scope)));
+    const one = scope === 'one' && editingOcc;
+    const s = one ? editingOcc : new Date(editing.start_at);
+    const e = one ? new Date(editingOcc.getTime() + (new Date(editing.end_at) - new Date(editing.start_at))) : new Date(editing.end_at);
+    F.start_date.value = toDateInput(s);
+    F.start_time.value = toTimeInput(s);
+    F.end_date.value = toDateInput(editing.all_day ? addDays(e, -1) : e);
+    F.end_time.value = toTimeInput(e);
+    formStart = s;
+    F.recurrence.closest('.row').hidden = !!one;
+    $('#evSeriesNote').hidden = !!one || !(editing.id && editing.recurrence !== 'none');
   }
 
   /* Réglages ---------------------------------------------------------------------- */
@@ -872,6 +1139,13 @@
             `<button type="button" data-theme-choice="${value}" aria-pressed="${currentTheme() === value}">${ic(icon)}${label}</button>`).join('')}
         </div>
       </section>
+      <section class="set-section">
+        <h3>Vacances scolaires</h3>
+        <div class="seg zone-seg" role="group" aria-label="Zone de vacances scolaires">
+          ${['', 'A', 'B', 'C'].map(z => `<button type="button" data-zone="${z}" aria-pressed="${schoolZone === z}">${z ? `Zone ${z}` : 'Aucune'}</button>`).join('')}
+        </div>
+        <p class="muted">Affichées dans l’agenda d’après le calendrier officiel de l’Éducation nationale.</p>
+      </section>
       ${notifSection()}
       <section class="set-section"><h3>Planning partagé</h3>${share}</section>
       <section class="set-section">
@@ -892,6 +1166,15 @@
           <button class="btn" data-act="remote">${ic('laptop')} Jours de télétravail</button></div>
       </section>
       ${installSection()}
+      <section class="set-section">
+        <h3>Sauvegarde et export</h3>
+        <p class="muted">Télécharge tes données pour les garder en lieu sûr, ou pour les ouvrir dans Excel.</p>
+        <div class="btn-row">
+          <button class="btn" data-act="export-json">${ic('save')} Sauvegarde complète</button>
+          <button class="btn" data-act="export-xlsx">${ic('save')} Export Excel</button>
+        </div>
+        <label class="btn restore-btn">${ic('upload')} Restaurer une sauvegarde<input type="file" id="restoreFile" accept="application/json,.json" hidden></label>
+      </section>
       <section class="set-section">
         <h3>Compte</h3>
         <p class="muted">${esc(state.user?.email)}</p>
@@ -1048,7 +1331,91 @@
     });
   }
 
+  /* Sauvegarde, export et restauration ------------------------------------------------ */
+  const EXPORT_FIELDS = ['title', 'notes', 'location', 'start_at', 'end_at', 'all_day', 'category', 'is_private',
+    'recurrence', 'recurrence_until', 'import_key', 'exdates'];
+  const allEvents = () => store.listEvents(new Date(1900, 0, 1), new Date(2200, 0, 1));
+
+  function download(name, blob) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }
+
+  // Sauvegarde complète (restaurable) : tes événements, télétravail, listes et réglages.
+  async function exportJson() {
+    const mine = (await allEvents()).filter(e => e.is_mine);
+    const data = {
+      app: 'Notre Planning', version: 1, exported_at: new Date().toISOString(),
+      profile: {
+        display_name: state.me?.display_name, color: state.me?.color,
+        shift_types: state.me?.shift_types || null, notif: state.me?.notif || null, work_name: state.me?.work_name || null,
+      },
+      events: mine.map(e => Object.fromEntries(EXPORT_FIELDS.map(k => [k, e[k] ?? null]))),
+      remote_days: [...state.remote.me].sort(),
+      list_items: store.getListItems().filter(i => i.is_mine)
+        .map(({ list, text, done, due }) => ({ list, text, done, due })),
+    };
+    download(`notre-planning-${toDateInput(new Date())}.json`, new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  }
+
+  // Export lisible dans Excel : tous les événements visibles (les tiens et ceux de l'autre) + listes.
+  async function exportXlsx() {
+    const XLSX = await PlanningImport.loadSheetJs();
+    const when = (iso, allDay) => {
+      const d = new Date(iso);
+      return allDay ? d.toLocaleDateString('fr-FR') : `${d.toLocaleDateString('fr-FR')} ${toTimeInput(d)}`;
+    };
+    const events = (await allEvents()).sort((a, b) => a.start_at.localeCompare(b.start_at)).map(e => ({
+      Titre: e.title, Personne: state.partner ? nameOf(e) : 'Moi', Type: CATS[e.category].label,
+      Début: when(e.start_at, e.all_day), Fin: when(e.all_day ? addDays(new Date(e.end_at), -1).toISOString() : e.end_at, e.all_day),
+      'Journée entière': e.all_day ? 'Oui' : '', Lieu: e.location || '', Notes: e.notes || '',
+      Répétition: RECUR_LABEL[e.recurrence] || '', 'Jusqu’au': e.recurrence_until || '', Privé: e.is_private ? 'Oui' : '',
+    }));
+    const items = store.getListItems().map(i => ({
+      Liste: LISTS[i.list]?.label || i.list, Élément: i.text, Fait: i.done ? 'Oui' : '',
+      'Qui s’en charge': personName(i.assignee), Échéance: i.due ? fromInputs(i.due).toLocaleDateString('fr-FR') : '',
+    }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(events), 'Événements');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(items.length ? items : [{ Liste: '' }]), 'Listes');
+    XLSX.writeFile(wb, `notre-planning-${toDateInput(new Date())}.xlsx`);
+  }
+
+  // Restauration : ajoute ce qui manque, sans doublons (même titre et mêmes horaires).
+  async function restoreBackup(file) {
+    let data;
+    try { data = JSON.parse(await file.text()); } catch { data = null; }
+    if (data?.app !== 'Notre Planning' || !Array.isArray(data.events)) throw new Error('Ce fichier n’est pas une sauvegarde de Notre Planning.');
+    const sig = e => `${e.title}|${e.start_at}|${e.end_at}`;
+    const seen = new Set((await allEvents()).filter(e => e.is_mine).map(sig));
+    const fresh = data.events.filter(e => e?.title && e.start_at && e.end_at && CATS[e.category] && !seen.has(sig(e)));
+    const items = (data.list_items || []).filter(i => i?.text && LISTS[i.list]);
+    const knownItems = new Set(store.getListItems().map(i => `${i.list}|${i.text}`));
+    const newItems = items.filter(i => !knownItems.has(`${i.list}|${i.text}`));
+    if (!confirm(`Restaurer ${fresh.length} événement(s) et ${newItems.length} élément(s) de liste ? `
+      + `(${data.events.length - fresh.length} événement(s) déjà présent(s) seront ignorés.)`)) return;
+    if (fresh.length) await store.bulkCreate(fresh);
+    for (const i of newItems) await store.saveListItem({ list: i.list, text: i.text, done: !!i.done, due: i.due || null });
+    if (data.remote_days?.length) await store.setRemoteDays([...new Set([...state.remote.me, ...data.remote_days])].sort());
+    if (data.profile?.shift_types && !state.me?.shift_types) await store.updateMe({ shift_types: data.profile.shift_types });
+    await loadProfiles();
+    toast(`Sauvegarde restaurée : ${fresh.length} événement(s) ajouté(s)`);
+    load();
+  }
+
   async function onSettingsClick(e) {
+    const zoneBtn = e.target.closest('[data-zone]');
+    if (zoneBtn) {
+      schoolZone = zoneBtn.dataset.zone;
+      try { localStorage.setItem(ZONE_KEY, schoolZone); } catch { /* ignoré */ }
+      $$('[data-zone]', setDlg).forEach(b => b.setAttribute('aria-pressed', String(b === zoneBtn)));
+      await loadSchoolHolidays();
+      return render();
+    }
     const shiftAct = e.target.closest('[data-act="shift-add"], [data-act="shift-del"]');
     if (shiftAct) {
       if (shiftAct.dataset.act === 'shift-del') shiftAct.closest('.shift-row').remove();
@@ -1091,6 +1458,10 @@
       } else if (act === 'remote') {
         setDlg.close();
         return openWork('remote');
+      } else if (act === 'export-json') {
+        return exportJson();
+      } else if (act === 'export-xlsx') {
+        return exportXlsx();
       } else if (act === 'push-on') {
         await enablePush();
         toast('Notifications activées sur cet appareil');
@@ -1395,6 +1766,9 @@
     }
     await withBusy($('#impSubmit'), async () => {
       const { added, removed } = await store.replaceImported(PlanningImport.IMPORT_KEY, imp.from, imp.to, imp.events);
+      // Date de fin du planning importé : sert au rappel « pense à importer le nouveau fichier ».
+      await store.updateMe({ work_until: imp.plan.last }).catch(err => console.error(err));
+      if (state.me) state.me.work_until = imp.plan.last;
       impDlg.close();
       toast(`${added} événements importés${removed ? ` (${removed} remplacés)` : ''}`);
       load();
@@ -1455,6 +1829,8 @@
       toastError(err);
     }
     load();
+    loadSchoolHolidays().then(render);
+    ensureWorkUntil().then(render, err => console.error(err));
     // Toute modification (de l'un ou de l'autre) rafraîchit profils, plannings et réglages.
     if (!unsubscribe) {
       unsubscribe = store.subscribe(debounce(async () => {
@@ -1534,14 +1910,17 @@
       saveUi();
       render();
     };
-    $('#fab').onclick = () => newEvent();
+    // En vue Listes, « + » sert à ajouter un élément à la liste affichée.
+    $('#fab').onclick = () => (state.view === 'lists' ? $('#listAdd [name=text]')?.focus() : newEvent());
     $('#settingsBtn').onclick = openSettings;
 
+    $('#main').addEventListener('submit', onListAdd);
     $('#main').addEventListener('click', e => {
+      if (state.view === 'lists') return onListsClick(e);
       const evEl = e.target.closest('[data-ev]');
       const go = e.target.closest('[data-goto]');
       // En vue mois sur téléphone, les événements sont de simples pastilles : toute la case ouvre le jour.
-      if (evEl && !(go && state.view === 'month' && narrowMq.matches)) return openEvent(evEl.dataset.ev);
+      if (evEl && !(go && state.view === 'month' && narrowMq.matches)) return openEvent(evEl.dataset.ev, evEl.dataset.occ);
       if (go) return openDay(fromInputs(go.dataset.goto));
       const col = e.target.closest('.wk-col');
       if (col) {
@@ -1575,6 +1954,18 @@
 
     setDlg.addEventListener('click', onSettingsClick);
     setDlg.addEventListener('submit', onSettingsSubmit);
+    setDlg.addEventListener('change', e => {
+      if (e.target.id !== 'restoreFile' || !e.target.files[0]) return;
+      restoreBackup(e.target.files[0]).catch(toastError).finally(() => { e.target.value = ''; });
+    });
+    $('#workAlert').onclick = e => {
+      const act = e.target.closest('[data-act]')?.dataset.act;
+      if (act === 'work-import') openImport();
+      if (act === 'work-dismiss') {
+        try { localStorage.setItem(WORK_ALERT_KEY, toDateInput(new Date())); } catch { /* ignoré */ }
+        renderWorkAlert();
+      }
+    };
 
     $('#remoteBtn').onclick = () => openWork();
     $('#rmPrev').onclick = () => { rmMonth = new Date(rmMonth.getFullYear(), rmMonth.getMonth() - 1, 1); renderWork(); };
@@ -1600,7 +1991,7 @@
       const evEl = e.target.closest('[data-ev]');
       if (!evEl) return;
       dayDlg.close();
-      openEvent(evEl.dataset.ev);
+      openEvent(evEl.dataset.ev, evEl.dataset.occ);
     });
     $('#dayAdd').onclick = () => {
       dayDlg.close();
@@ -1617,9 +2008,20 @@
     evForm.addEventListener('click', e => {
       const b = e.target.closest('[data-preset]');
       if (b) applyPreset(PRESETS[b.dataset.preset]);
+      const sc = e.target.closest('[data-scope]');
+      if (sc) setScope(sc.dataset.scope);
     });
 
-    for (const dlg of [evDlg, setDlg, impDlg, rmDlg, dayDlg]) {
+    $('#searchBtn').onclick = openSearch;
+    $('#searchInput').addEventListener('input', debounce(runSearch, 150));
+    $('#searchResults').onclick = e => {
+      const r = e.target.closest('[data-ev]');
+      if (!r) return;
+      searchDlg.close();
+      openEvent(r.dataset.ev, r.dataset.occ);
+    };
+
+    for (const dlg of [evDlg, setDlg, impDlg, rmDlg, dayDlg, searchDlg]) {
       dlg.addEventListener('click', e => {
         if (e.target === dlg || e.target.closest('[data-close]')) dlg.close();
       });
@@ -1630,12 +2032,13 @@
     $('#authForm').addEventListener('submit', submitAuth);
 
     document.addEventListener('keydown', e => {
-      if (evDlg.open || setDlg.open || impDlg.open || rmDlg.open || dayDlg.open || $('#app').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+      if ($$("dialog[open]").length || $("#app").hidden || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.target.closest('input, textarea, select')) return;
       if (e.key === 'ArrowLeft') step(-1);
       else if (e.key === 'ArrowRight') step(1);
       else if (e.key === 't') $('#todayBtn').click();
       else if (e.key === 'n') newEvent();
+      else if (e.key === '/') { e.preventDefault(); openSearch(); }
       else if (e.key === 'a') setView('agenda');
       else if (e.key === 's') setView('week');
       else if (e.key === 'm') setView('month');

@@ -36,6 +36,8 @@
   --off-bg: #fef6c7;
   --off-text: #854d0e;
   --hol: #dc2626;
+  --school: #0d9488;
+  --school-bg: #ccfbf1;
 }
 /* Thème sombre : automatique (réglage de l'appareil) sauf si « Clair » est forcé,
    et toujours quand « Sombre » est forcé (bloc recopié plus bas). */
@@ -67,6 +69,8 @@
     --off-bg: #332d12;
     --off-text: #fde68a;
     --hol: #f87171;
+    --school: #2dd4bf;
+    --school-bg: #123a37;
   }
 }
 :root[data-theme="dark"] {
@@ -96,6 +100,8 @@
   --off-bg: #332d12;
   --off-text: #fde68a;
   --hol: #f87171;
+  --school: #2dd4bf;
+  --school-bg: #123a37;
 }
 
 * { box-sizing: border-box; }
@@ -654,3 +660,82 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .notif-on { margin: 0; display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--cat-perso); }
 .notif-delay { flex-direction: row; align-items: center; gap: 10px; margin-left: 26px; }
 .notif-delay select { width: auto; }
+
+/* Vacances scolaires : bande turquoise continue (vue mois), repère en haut du jour (vue semaine) */
+.school-bar {
+  align-self: stretch; margin: 1px -5px 2px; height: 16px; padding: 0 6px;
+  display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap;
+  background: var(--school-bg); color: var(--school); font-size: 10px; font-weight: 700;
+}
+.school-bar.is-first { margin-left: 2px; border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+.school-bar.is-last { margin-right: 2px; border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+.school-bar .i { width: 11px; height: 11px; flex: none; }
+.school-bar span { overflow: hidden; text-overflow: ellipsis; }
+.wk-day.is-school { box-shadow: inset 0 3px 0 var(--school); }
+.school-tag { font-size: 12px; font-weight: 600; color: var(--school); background: var(--school-bg); }
+
+/* Rappel du planning Excel */
+.work-alert {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 16px;
+  background: var(--off-bg); color: var(--off-text); font-size: 14px; border-bottom: 1px solid var(--border);
+}
+.work-alert > .i { color: var(--off-text); }
+.work-alert span { flex: 1 1 200px; }
+.work-alert .btn { height: 32px; font-size: 13px; }
+
+/* Modifier une date / toute la série */
+.scope-seg { display: flex; }
+.scope-seg button { flex: 1; }
+
+/* Recherche */
+.search-results { display: flex; flex-direction: column; gap: 6px; }
+.search-hit {
+  display: grid; grid-template-columns: 4px 1fr; gap: 10px; text-align: left; width: 100%;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+}
+.search-hit:hover { background: var(--surface-2); }
+.search-hit strong { display: block; }
+.search-hit small { color: var(--muted); font-size: 12px; }
+
+/* Listes partagées */
+#app[data-view="lists"] .filters, #app[data-view="lists"] .nav .icon-btn, #app[data-view="lists"] #todayBtn { display: none; }
+.lists { max-width: 640px; margin: 0 auto; padding: 12px 16px var(--nav-space); display: flex; flex-direction: column; gap: 12px; }
+.list-seg { display: flex; align-self: flex-start; }
+.list-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.list-add > .input { flex: 1 1 200px; }
+.list-opts { flex: 1 1 100%; order: 2; }
+.list-add > .btn { order: 1; }
+.li-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.li-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+}
+.li-check {
+  flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border);
+  background: var(--surface); padding: 0; position: relative;
+}
+.li-check[aria-pressed="true"] { background: var(--cat-perso); border-color: var(--cat-perso); }
+.li-check[aria-pressed="true"]::after {
+  content: ""; position: absolute; left: 7px; top: 3px; width: 6px; height: 11px;
+  border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.li-body { flex: 1; min-width: 0; }
+.li-text { overflow-wrap: anywhere; }
+.li-item.is-done .li-text { text-decoration: line-through; color: var(--muted); }
+.li-del { opacity: .6; }
+.li-del:hover { opacity: 1; }
+.li-done-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.link.danger { color: var(--danger); display: inline-flex; align-items: center; gap: 4px; }
+.tag.is-late { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--surface-2)); }
+.list-hint { font-size: 13px; }
+
+/* Réglages : zone de vacances, restauration */
+.zone-seg { display: flex; }
+.zone-seg button { flex: 1; }
+.restore-btn { align-self: flex-start; cursor: pointer; }
+
+@media (max-width: 700px) {
+  .tab { padding: 7px 1px 6px; }
+  .tab .i { width: 21px; height: 21px; }
+  .work-alert { padding: 8px 12px; }
+}
