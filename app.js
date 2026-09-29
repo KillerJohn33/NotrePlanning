@@ -210,6 +210,9 @@
     $('#period').textContent = label;
 
     $$('#viewSeg [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
+    // L'onglet Télétravail n'apparaît que pour qui l'utilise (planning Excel importé ou jours saisis) ;
+    // il reste accessible pour tous depuis ⚙ Réglages.
+    $('#remoteBtn').hidden = !(state.me?.work_name || state.remote.me.size);
     $$('#catChips [data-cat]').forEach(b => b.setAttribute('aria-pressed', String(!!state.cats[b.dataset.cat])));
 
     const whoSeg = $('#whoSeg');
@@ -221,7 +224,7 @@
         ['both', 'Ensemble', null],
       ];
       whoSeg.innerHTML = opts.map(([key, label, color]) =>
-        `<button data-who="${key}" aria-pressed="${state.who === key}">${color ? `<span class="dot" style="--c:${esc(color)}"></span>` : ic('users')}${esc(label)}</button>`
+        `<button data-who="${key}" aria-pressed="${state.who === key}" title="${esc(label)}" aria-label="${esc(label)}">${color ? `<span class="dot" style="--c:${esc(color)}"></span>` : ic('users')}<span class="who-label">${esc(label)}</span></button>`
       ).join('');
     }
   }

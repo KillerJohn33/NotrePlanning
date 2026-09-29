@@ -529,10 +529,17 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
   .nav { gap: 4px; }
   .nav .btn { padding: 0 10px; }
   .nav h1 { font-size: 15px; margin-left: 4px; }
-  .filters { padding: 6px 12px; gap: 6px; }
-  #whoSeg button { padding: 5px 9px; font-size: 13px; }
-  .chip { padding: 3px 10px; }
-  .demo-banner { margin-left: 0; }
+  /* Filtres sur une seule ligne : types en boutons ronds (icône seule),
+     « Ensemble » réduit à son icône. */
+  .filters { padding: 6px 12px; gap: 8px; }
+  #whoSeg, .chips { flex: none; }
+  #whoSeg button { padding: 5px 10px; font-size: 13px; }
+  #whoSeg [data-who="both"] .who-label { display: none; }
+  .chips { gap: 6px; }
+  .chip[data-cat] { width: 36px; height: 36px; padding: 0; justify-content: center; }
+  .chip[data-cat] .chip-label { display: none; }
+  .chip[data-cat] .i { width: 18px; height: 18px; }
+  .demo-banner { margin-left: 0; flex-basis: 100%; }
   .mo-grid { grid-auto-rows: minmax(64px, 1fr); }
   .mo-cell { padding: 3px; align-items: center; }
   .mo-events { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 3px; }
