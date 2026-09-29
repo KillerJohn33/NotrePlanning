@@ -392,6 +392,7 @@
           ev('me', { title: 'Travail', category: 'pro', start_at: at(0, 9), end_at: at(0, 17, 30), recurrence: 'weekdays', location: 'Bureau' }),
           ev('me', { title: 'Réunion d’équipe', category: 'pro', start_at: at(1, 14), end_at: at(1, 15), recurrence: 'weekly' }),
           ev('me', { title: 'Congés', category: 'pro', all_day: true, start_at: at(16, 0), end_at: at(19, 0) }),
+          ev('partner', { title: 'Congés', category: 'pro', all_day: true, start_at: at(14, 0), end_at: at(18, 0) }),
           ev('me', { title: 'Permanence', category: 'pro', start_at: at(3, 8, 30), end_at: at(3, 18), recurrence: 'weekly' }),
           ev('me', { title: 'Sport', category: 'perso', start_at: at(1, 18, 30), end_at: at(1, 20), recurrence: 'weekly' }),
           ev('partner', { title: 'Travail', category: 'pro', start_at: at(0, 7), end_at: at(0, 15), recurrence: 'weekly' }),

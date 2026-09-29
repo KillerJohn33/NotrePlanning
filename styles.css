@@ -35,6 +35,9 @@
   --off: #eab308;
   --off-bg: #fef6c7;
   --off-text: #854d0e;
+  --off-partner: #f472b6;
+  --off-partner-bg: #fde7f3;
+  --off-partner-text: #9d174d;
   --hol: #dc2626;
   --school: #0d9488;
   --school-bg: #ccfbf1;
@@ -68,6 +71,9 @@
     --off: #facc15;
     --off-bg: #332d12;
     --off-text: #fde68a;
+    --off-partner: #f472b6;
+    --off-partner-bg: #3a1c2d;
+    --off-partner-text: #fbcfe8;
     --hol: #f87171;
     --school: #2dd4bf;
     --school-bg: #123a37;
@@ -99,6 +105,9 @@
   --off: #facc15;
   --off-bg: #332d12;
   --off-text: #fde68a;
+  --off-partner: #f472b6;
+  --off-partner-bg: #3a1c2d;
+  --off-partner-text: #fbcfe8;
   --hol: #f87171;
   --school: #2dd4bf;
   --school-bg: #123a37;
@@ -768,3 +777,19 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .cat-colors { display: flex; flex-direction: column; gap: 6px; }
 .cat-colors-label { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; }
 .cat-colors-label .i { color: var(--cc); }
+
+/* Congés de l'autre personne : rose (les miens restent jaunes) ; les deux : moitié-moitié */
+.mo-cell.is-off.is-partner, .mo-cell.is-off.is-partner:hover { background: var(--off-partner-bg); }
+.mo-cell.is-off.is-both, .mo-cell.is-off.is-both:hover { background: linear-gradient(180deg, var(--off-bg) 50%, var(--off-partner-bg) 50%); }
+.off-bar.is-partner { background: var(--off-partner); color: #500724; }
+.off-bar.is-both { background: linear-gradient(180deg, var(--off) 50%, var(--off-partner) 50%); color: #3b0a1f; }
+.wk-col.is-off.is-partner { background-color: var(--off-partner-bg); }
+.wk-col.is-off.is-both {
+  background-image: linear-gradient(to bottom, var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--off-bg) 50%, var(--off-partner-bg) 50%);
+  background-size: 100% var(--hour), 100% 100%;
+}
+.chip-ev.is-off.is-partner { background: var(--off-partner); border-left-color: var(--off-partner); color: #500724; }
+.chip-ev.is-off.is-partner .i { color: #500724; }
+.ag-ev.is-off.is-partner { background: var(--off-partner-bg); border-color: color-mix(in srgb, var(--off-partner) 45%, transparent); }
+.ag-ev.is-off.is-partner .ag-bar { background: var(--off-partner); }
+.ag-ev.is-off.is-partner strong { color: var(--off-partner-text); }

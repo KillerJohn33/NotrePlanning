@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v26';
+  const APP_VERSION = 'v27';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -561,7 +561,7 @@
       html += `<div class="wk-row wk-allday" style="grid-template-columns:${cols}"><div class="wk-label wk-corner">Journée</div>`;
       for (const d of dates) {
         const items = allDay.filter(o => o.start < addDays(d, 1) && o.end > d);
-        html += `<div>${items.map(o => `<button class="chip-ev ${isOff(o.ev) ? 'is-off' : ''}" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))};--pc:${esc(personColorOf(o.ev))}" title="${esc(o.ev.title)}">${ic(CATS[o.ev.category].icon)} ${esc(o.ev.title)}</button>`).join('')}</div>`;
+        html += `<div>${items.map(o => `<button class="chip-ev ${isOff(o.ev) ? `is-off${offClass(offKindOf(o.ev))}` : ''}" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))};--pc:${esc(personColorOf(o.ev))}" title="${esc(o.ev.title)}">${ic(CATS[o.ev.category].icon)} ${esc(o.ev.title)}</button>`).join('')}</div>`;
       }
       html += '</div>';
     }
@@ -589,8 +589,8 @@
       segs.forEach(x => (groups[x.lane] ||= []).push(x));
       Object.values(groups).forEach(layoutColumns);
 
-      const offDay = occ.some(o => isOff(o.ev) && o.start < dayEnd && o.end > d);
-      html += `<div class="wk-col ${sameDay(d, now) ? 'is-today' : ''} ${offDay ? 'is-off' : ''}" data-date="${toDateInput(d)}">`;
+      const offDay = offKind(occ.filter(o => o.start < dayEnd && o.end > d));
+      html += `<div class="wk-col ${sameDay(d, now) ? 'is-today' : ''} ${offDay ? `is-off${offClass(offDay)}` : ''}" data-date="${toDateInput(d)}">`;
       if (split) html += '<div class="lane-divider"></div>';
       for (const x of segs) {
         const [l, w] = LANE[x.lane];
@@ -628,16 +628,26 @@
       title="${esc(tip)}"><span class="ev-title">${iconOf(ev, o.start)} ${esc(ev.title)}</span><span class="ev-time">${time}</span></button>`;
   }
 
-  // Ruban jaune des congés, continu d'une case à l'autre : arrondi au premier et au dernier
-  // jour de la période, libellé au début de la période et au début de chaque semaine.
-  function offRibbon(off, d, lastOfMonth) {
-    if (!off) return '';
-    const first = sameDay(off.start, d);
-    const last = sameDay(addDays(off.end, -1), d);
-    const rowStart = first || d.getDay() === 1 || d.getDate() === 1;
-    const who = state.partner && !off.ev.is_mine ? ` · ${off.ev.category === 'commun' ? 'ensemble' : nameOf(off.ev)}` : '';
-    return `<div class="off-bar${first ? ' is-first' : ''}${last || lastOfMonth || d.getDay() === 0 ? ' is-last' : ''}" title="${esc(off.ev.title + who)}">`
-      + (rowStart ? `${ic('sun')}<span>${esc(off.ev.title)}</span>` : '') + '</div>';
+  // Congés vus depuis cet appareil : les miens (et les « commun ») en jaune, ceux de l'autre en rose.
+  const offKindOf = ev => (ev.is_mine || ev.category === 'commun' ? 'mine' : 'partner');
+  // Qui est en congé ce jour-là : 'mine', 'partner', 'both' ou '' (d'après les occurrences du jour).
+  function offKind(dayOccs) {
+    const kinds = new Set(dayOccs.filter(o => isOff(o.ev)).map(o => offKindOf(o.ev)));
+    return kinds.size === 2 ? 'both' : [...kinds][0] || '';
+  }
+  const offClass = kind => (kind === 'partner' ? ' is-partner' : kind === 'both' ? ' is-both' : '');
+
+  // Ruban des congés, continu d'une case à l'autre : arrondi au début et à la fin de la période,
+  // libellé au début de la période, de chaque semaine, ou quand la personne en congé change.
+  function offRibbon(kind, prevKind, nextKind, d, lastOfMonth, title) {
+    if (!kind) return '';
+    const first = !prevKind;
+    const last = !nextKind || lastOfMonth || d.getDay() === 0;
+    const showLabel = first || d.getDay() === 1 || d.getDate() === 1 || prevKind !== kind;
+    const partner = state.partner?.display_name || 'l’autre';
+    const label = kind === 'both' ? 'Congés · vous deux' : kind === 'partner' ? `Congés · ${partner}` : title;
+    return `<div class="off-bar${offClass(kind)}${first ? ' is-first' : ''}${last ? ' is-last' : ''}" title="${esc(label)}">`
+      + (showLabel ? `${ic('sun')}<span>${esc(label)}</span>` : '') + '</div>';
   }
 
   // Vue mois : les mois s'enchaînent verticalement (défilement continu, chargement au fil de l'eau).
@@ -670,14 +680,16 @@
       for (let day = 1; day <= nDays; day++) {
         const d = new Date(m.getFullYear(), m.getMonth(), day);
         const all = byDay.get(toDateInput(d)) || [];
-        const off = all.find(o => isOff(o.ev));
+        const kindOn = date => offKind(byDay.get(toDateInput(date)) || []);
+        const off = kindOn(d);
+        const offTitle = all.find(o => isOff(o.ev) && offKindOf(o.ev) === 'mine')?.ev.title || 'Congés';
         const items = all.filter(o => !isOff(o.ev));
         const hol = holidayName(d);
         // Vacances scolaires : simple trait coloré en bas de la case (sans prendre de place).
         const school = schoolHolidayOf(d);
         const tip = [hol, school && `${school.name} (zone ${schoolZone})`].filter(Boolean).join(' · ');
-        html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? 'is-off' : ''} ${hol ? 'is-holiday' : ''} ${school ? 'is-school' : ''}" data-goto="${toDateInput(d)}"${tip ? ` title="${esc(tip)}"` : ''}>
-          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, d, day === nDays)}<div class="mo-events">`;
+        html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? `is-off${offClass(off)}` : ''} ${hol ? 'is-holiday' : ''} ${school ? 'is-school' : ''}" data-goto="${toDateInput(d)}"${tip ? ` title="${esc(tip)}"` : ''}>
+          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, kindOn(addDays(d, -1)), kindOn(addDays(d, 1)), d, day === nDays, offTitle)}<div class="mo-events">`;
         for (const o of items.slice(0, max)) {
           const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
           html += `<button class="mo-ev" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}"><i></i><span>${time}${esc(o.ev.title)}</span></button>`;
@@ -745,7 +757,7 @@
     const age = ev.recurrence === 'yearly' ? o.start.getFullYear() - new Date(ev.start_at).getFullYear() : 0;
     if (age > 0) tags.push(`<span class="tag">${ic('cake')} ${age} ans</span>`);
     if (ev.location) tags.push(`<span class="tag">${ic('pin')} ${esc(ev.location)}</span>`);
-    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isOff(ev) ? 'is-off' : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
+    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
       <span class="ag-time">${time}</span><span class="ag-bar"></span>
       <span class="ag-body"><strong>${esc(ev.title)}</strong><span class="ag-meta">${tags.join('')}</span></span></button>`;
   }
