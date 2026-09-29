@@ -1,4 +1,4 @@
-/* Couche de données : Supabase si config.js est rempli, sinon mode démo local.
+/* Couche de données : Firebase si config.js est rempli, sinon mode démo local.
    Les deux implémentations exposent la même interface (window.PlanningStore). */
 (() => {
   'use strict';
@@ -7,69 +7,237 @@
     'is_private', 'recurrence', 'recurrence_until'];
   const pick = ev => Object.fromEntries(EVENT_FIELDS.map(k => [k, ev[k] ?? null]));
 
-  function createSupabaseStore() {
-    if (!window.supabase) throw new Error('Impossible de charger Supabase (connexion internet ?).');
-    const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-    const redirectTo = location.origin + location.pathname;
-    let userId = null;
-    const check = ({ data, error }) => { if (error) throw error; return data; };
+  /* Firebase (Auth + Firestore). Les données des deux personnes sont écoutées en
+     temps réel et gardées en mémoire ; listEvents filtre ce cache. Voir firestore.rules. */
+  function createFirebaseStore() {
+    if (!window.firebase) throw new Error('Impossible de charger Firebase (connexion internet ?).');
+    firebase.initializeApp(cfg.firebase);
+    const auth = firebase.auth();
+    auth.languageCode = 'fr';
+    const db = firebase.firestore();
+    db.enablePersistence({ synchronizeTabs: true }).catch(() => { /* hors-ligne indisponible : pas grave */ });
+    const FieldValue = firebase.firestore.FieldValue;
+
+    const userRef = id => db.collection('users').doc(id);
+    const inviteRef = code => db.collection('invites').doc(code);
+    const secretRef = id => db.collection('eventSecrets').doc(id);
+    const toMap = snap => new Map(snap.docs.map(d => [d.id, { id: d.id, ...d.data() }]));
+    const onErr = err => console.error(err);
+
+    const listeners = new Set();
+    const emit = () => listeners.forEach(fn => fn());
+
+    let uid = null;
+    let me = null, partner = null, invite = null;
+    let myEvents = new Map(), partnerEvents = new Map(), secrets = new Map();
+    let baseUnsubs = [], partnerUnsub = null, partnerEventsUnsub = null, inviteUnsub = null;
+    let watchedPartner = null, watchedInvite = null;
+    let pendingName = '';
+
+    const isMutual = () => !!(me?.partner_id && partner && partner.id === me.partner_id && partner.partner_id === uid);
+
+    function stopAll() {
+      [...baseUnsubs, partnerUnsub, partnerEventsUnsub, inviteUnsub].forEach(u => u && u());
+      baseUnsubs = [];
+      partnerUnsub = partnerEventsUnsub = inviteUnsub = null;
+      watchedPartner = watchedInvite = null;
+      me = partner = invite = null;
+      myEvents = new Map(); partnerEvents = new Map(); secrets = new Map();
+    }
+
+    function watchMine() {
+      baseUnsubs.push(
+        userRef(uid).onSnapshot(s => { me = s.exists ? { id: s.id, ...s.data() } : null; syncLinks(); emit(); }, onErr),
+        db.collection('events').where('owner_id', '==', uid).onSnapshot(s => { myEvents = toMap(s); emit(); }, onErr),
+        db.collection('eventSecrets').where('owner_id', '==', uid).onSnapshot(s => { secrets = toMap(s); emit(); }, onErr),
+      );
+    }
+
+    // Suit le profil du partenaire et l'invitation en cours quand ils changent.
+    function syncLinks() {
+      const pid = me?.partner_id || null;
+      if (pid !== watchedPartner) {
+        partnerUnsub?.();
+        partnerUnsub = null;
+        partner = null;
+        watchedPartner = pid;
+        if (pid) {
+          partnerUnsub = userRef(pid).onSnapshot(
+            s => { partner = s.exists ? { id: s.id, ...s.data() } : null; syncPartnerEvents(); emit(); },
+            () => { partner = null; syncPartnerEvents(); emit(); });
+        }
+      }
+      syncPartnerEvents();
+
+      const code = me?.invite_code || null;
+      if (code !== watchedInvite) {
+        inviteUnsub?.();
+        inviteUnsub = null;
+        invite = null;
+        watchedInvite = code;
+        if (code) {
+          inviteUnsub = inviteRef(code).onSnapshot({ includeMetadataChanges: true }, s => {
+            invite = s.exists ? s.data() : null;
+            if (!s.metadata.fromCache) reconcile();
+            emit();
+          }, onErr);
+        }
+      }
+    }
+
+    // Le planning du partenaire n'est lisible que si la liaison est réciproque.
+    function syncPartnerEvents() {
+      const ok = isMutual();
+      if (ok && !partnerEventsUnsub) {
+        partnerEventsUnsub = db.collection('events').where('owner_id', '==', watchedPartner).onSnapshot(
+          s => { partnerEvents = toMap(s); emit(); },
+          () => { partnerEventsUnsub = null; partnerEvents = new Map(); emit(); });
+      } else if (!ok && partnerEventsUnsub) {
+        partnerEventsUnsub();
+        partnerEventsUnsub = null;
+        partnerEvents = new Map();
+      }
+    }
+
+    // Finalise ou nettoie la liaison selon l'état (côté serveur) de l'invitation.
+    async function reconcile() {
+      if (!me || !watchedInvite) return;
+      try {
+        if (!invite) {
+          // Invitation supprimée (l'autre a arrêté le partage) : on se délie aussi.
+          if (me.partner_id || me.invite_code) await userRef(uid).update({ partner_id: null, invite_code: null });
+        } else if (invite.from === uid && invite.accepted_by && me.partner_id !== invite.accepted_by) {
+          await userRef(uid).update({ partner_id: invite.accepted_by });
+        }
+      } catch (err) { onErr(err); }
+    }
+
+    async function ensureProfile(user) {
+      const ref = userRef(user.uid);
+      const snap = await ref.get();
+      if (!snap.exists) {
+        await ref.set({
+          display_name: (pendingName || user.email.split('@')[0]).slice(0, 60),
+          color: '#3b82f6', partner_id: null, invite_code: null,
+        });
+      }
+    }
+
+    function randomCode() {
+      const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      return Array.from(crypto.getRandomValues(new Uint8Array(8)), b => alphabet[b % alphabet.length]).join('');
+    }
+
+    let resolveFirst;
+    const firstAuth = new Promise(res => { resolveFirst = res; });
+    const authCallbacks = [];
+    auth.onAuthStateChanged(async user => {
+      if ((user?.uid ?? null) === uid && uid !== null) return;
+      stopAll();
+      uid = user?.uid ?? null;
+      if (user) {
+        try { await ensureProfile(user); } catch (err) { onErr(err); }
+        watchMine();
+      }
+      const u = user ? { id: user.uid, email: user.email } : null;
+      resolveFirst(u);
+      authCallbacks.forEach(cb => cb(u ? 'SIGNED_IN' : 'SIGNED_OUT', u));
+    });
 
     return {
-      mode: 'supabase',
-      async getUser() {
-        const { data } = await sb.auth.getSession();
-        const user = data.session?.user ?? null;
-        userId = user?.id ?? null;
-        return user;
-      },
-      onAuthChange(cb) {
-        sb.auth.onAuthStateChange((event, session) => {
-          userId = session?.user?.id ?? null;
-          // Ne pas appeler Supabase directement dans ce callback (risque de blocage).
-          setTimeout(() => cb(event, session?.user ?? null), 0);
-        });
-      },
-      async signIn(email, password) { check(await sb.auth.signInWithPassword({ email, password })); },
+      mode: 'firebase',
+      getUser: () => firstAuth,
+      onAuthChange(cb) { authCallbacks.push(cb); },
+      async signIn(email, password) { await auth.signInWithEmailAndPassword(email, password); },
       async signUp(email, password, name) {
-        const data = check(await sb.auth.signUp({
-          email, password, options: { data: { display_name: name }, emailRedirectTo: redirectTo },
-        }));
-        return { needsConfirmation: !data.session };
+        pendingName = name;
+        await auth.createUserWithEmailAndPassword(email, password);
+        return { needsConfirmation: false };
       },
-      async resetPassword(email) { check(await sb.auth.resetPasswordForEmail(email, { redirectTo })); },
-      async updatePassword(password) { check(await sb.auth.updateUser({ password })); },
-      async signOut() { await sb.auth.signOut(); },
+      async resetPassword(email) { await auth.sendPasswordResetEmail(email); },
+      async updatePassword(password) { await auth.currentUser.updatePassword(password); },
+      async signOut() { await auth.signOut(); },
 
       async getProfiles() {
-        const rows = check(await sb.from('profiles').select('id, display_name, color, household_id'));
-        return {
-          me: rows.find(r => r.id === userId) || null,
-          partner: rows.find(r => r.id !== userId) || null,
-        };
+        return { me, partner: isMutual() ? partner : null };
       },
       async getHousehold() {
-        const rows = check(await sb.from('households').select('id, invite_code'));
-        return rows[0] || null;
+        if (!me?.invite_code && !me?.partner_id) return null;
+        const waiting = !isMutual() && !!(me.partner_id || invite?.accepted_by);
+        return { invite_code: me.invite_code, waiting };
       },
-      async updateMe(patch) { check(await sb.from('profiles').update(patch).eq('id', userId)); },
-      async createHousehold() { return check(await sb.rpc('create_household')); },
-      async joinHousehold(code) { check(await sb.rpc('join_household', { p_code: code.trim().toUpperCase() })); },
-      async leaveHousehold() { check(await sb.rpc('leave_household')); },
+      async updateMe(patch) { await userRef(uid).update(patch); },
+
+      async createHousehold() {
+        if (me?.invite_code) return;
+        const code = randomCode();
+        await inviteRef(code).set({ from: uid, accepted_by: null, created_at: FieldValue.serverTimestamp() });
+        await userRef(uid).update({ invite_code: code });
+      },
+      async joinHousehold(raw) {
+        const code = raw.trim().toUpperCase();
+        const snap = code ? await inviteRef(code).get() : null;
+        if (!snap?.exists) throw new Error('Code d’invitation invalide');
+        const inv = snap.data();
+        if (inv.from === uid) throw new Error('C’est ton propre code : envoie-le à l’autre personne.');
+        if (inv.accepted_by && inv.accepted_by !== uid) throw new Error('Ce code a déjà été utilisé.');
+        // Abandonne sa propre invitation en attente, s'il y en a une.
+        if (me?.invite_code && me.invite_code !== code) {
+          await inviteRef(me.invite_code).delete().catch(() => {});
+        }
+        if (!inv.accepted_by) await inviteRef(code).update({ accepted_by: uid });
+        await userRef(uid).update({ partner_id: inv.from, invite_code: code });
+      },
+      async leaveHousehold() {
+        const code = me?.invite_code;
+        await userRef(uid).update({ partner_id: null, invite_code: null });
+        if (code) await inviteRef(code).delete().catch(() => {});
+      },
 
       async listEvents(from, to) {
-        return check(await sb.rpc('list_events', { p_from: from.toISOString(), p_to: to.toISOString() }));
+        const fromIso = from.toISOString();
+        const toIso = to.toISOString();
+        const rows = [];
+        const add = (e, mine) => {
+          if (!(e.start_at < toIso && (e.end_at > fromIso || e.recurrence !== 'none'))) return;
+          const secret = mine && e.is_private ? secrets.get(e.id) : null;
+          rows.push({
+            ...e,
+            is_mine: mine,
+            title: e.is_private ? (mine ? secret?.title || '(privé)' : 'Occupé') : e.title,
+            notes: e.is_private ? secret?.notes ?? null : e.notes,
+            location: e.is_private ? secret?.location ?? null : e.location,
+          });
+        };
+        myEvents.forEach(e => add(e, true));
+        if (isMutual()) partnerEvents.forEach(e => add(e, false));
+        return rows;
       },
       async saveEvent(ev) {
         const row = pick(ev);
-        if (ev.id) check(await sb.from('events').update(row).eq('id', ev.id));
-        else check(await sb.from('events').insert(row));
+        const ref = ev.id ? db.collection('events').doc(ev.id) : db.collection('events').doc();
+        const existing = ev.id ? myEvents.get(ev.id) || partnerEvents.get(ev.id) : null;
+        const doc = { ...row, owner_id: existing ? existing.owner_id : uid, updated_at: FieldValue.serverTimestamp() };
+        const batch = db.batch();
+        if (row.is_private) {
+          // Le titre, le lieu et les notes partent dans eventSecrets, invisible pour l'autre.
+          batch.set(secretRef(ref.id), { owner_id: uid, title: row.title, notes: row.notes, location: row.location });
+          Object.assign(doc, { title: '', notes: null, location: null });
+        } else if (secrets.has(ref.id)) {
+          batch.delete(secretRef(ref.id));
+        }
+        batch.set(ref, doc);
+        await batch.commit();
       },
-      async deleteEvent(id) { check(await sb.from('events').delete().eq('id', id)); },
+      async deleteEvent(id) {
+        const batch = db.batch();
+        batch.delete(db.collection('events').doc(id));
+        if (secrets.has(id)) batch.delete(secretRef(id));
+        await batch.commit();
+      },
       subscribe(cb) {
-        const channel = sb.channel('events-changes')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, cb)
-          .subscribe();
-        return () => sb.removeChannel(channel);
+        listeners.add(cb);
+        return () => listeners.delete(cb);
       },
     };
   }
@@ -190,9 +358,9 @@
     };
   }
 
-  const useSupabase = !!(cfg.supabaseUrl && cfg.supabaseAnonKey);
+  const useFirebase = !!cfg.firebase?.apiKey;
   try {
-    window.PlanningStore = useSupabase ? createSupabaseStore() : createDemoStore();
+    window.PlanningStore = useFirebase ? createFirebaseStore() : createDemoStore();
   } catch (err) {
     window.PlanningStoreError = err;
   }

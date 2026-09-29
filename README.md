@@ -6,36 +6,48 @@ Petite application web (PWA) pour gérer ses plannings **pro** et **perso** et l
 - Filtres **Moi / Partenaire / Ensemble** et **Pro / Perso / Commun**
 - Vue croisée : chaque jour est coupé en deux colonnes (une par personne), les événements communs prennent toute la largeur
 - **« Libres ensemble »** : créneaux où aucun des deux n'a rien de prévu (7h–23h, 1 h minimum)
-- Événements **privés** : l'autre voit seulement « Occupé », sans titre, lieu ni notes (masquage fait côté serveur)
+- Événements **privés** : l'autre voit seulement « Occupé », sans titre, lieu ni notes (garanti par les règles de sécurité de la base)
 - Événements **communs** : modifiables par les deux
 - Répétitions : tous les jours, du lundi au vendredi, chaque semaine, chaque mois (+ date de fin)
 - Synchronisation en temps réel, thème clair/sombre automatique, installable sur téléphone
 - Raccourcis clavier : `←` `→` naviguer, `t` aujourd'hui, `n` nouvel événement, `a` / `s` / `m` changer de vue
 
-Stack : HTML/CSS/JS sans build + [Supabase](https://supabase.com) (auth, Postgres, RLS, realtime).
+Stack : HTML/CSS/JS sans build + [Firebase](https://firebase.google.com) (Authentication + Cloud Firestore, offre gratuite Spark), hébergé sur GitHub Pages.
 
 ## Essayer tout de suite (mode démo)
 
-Ouvre `index.html` dans le navigateur. Tant que `config.js` est vide, l'app tourne en **mode démo**
+Ouvre `index.html` dans le navigateur. Tant que `config.js` contient `firebase: null`, l'app tourne en **mode démo**
 avec des données d'exemple enregistrées dans le navigateur (rien n'est partagé).
 
 ## Mise en service (partage réel)
 
-1. Crée un projet gratuit sur [supabase.com](https://supabase.com).
-2. **SQL Editor** → colle le contenu de [`supabase/schema.sql`](supabase/schema.sql) → **Run**.
-3. **Project Settings → API** : copie la *Project URL* et la clé *anon public* dans `config.js`.
-4. **Authentication → URL Configuration** : mets l'adresse où l'app est hébergée dans *Site URL*
-   (et dans *Redirect URLs*), pour que les liens de confirmation et de mot de passe oublié fonctionnent.
-5. Héberge le dossier sur n'importe quel hébergement statique (GitHub Pages, Netlify, Vercel…).
-   En local, un simple serveur suffit : `python -m http.server 8000` puis http://localhost:8000.
+1. Sur [console.firebase.google.com](https://console.firebase.google.com), crée un projet (Google Analytics n'est pas nécessaire).
+2. **Build → Authentication → Commencer** : active le fournisseur **Adresse e-mail/Mot de passe**.
+3. Dans **Authentication → Paramètres → Domaines autorisés**, ajoute `killerjohn33.github.io`.
+4. **Build → Firestore Database → Créer une base de données** : choisis une région en Europe (ex. `eur3`) et le mode production.
+5. Dans l'onglet **Règles** de Firestore, remplace tout le contenu par [`firestore.rules`](firestore.rules), puis clique sur **Publier**.
+6. **Paramètres du projet (⚙) → Général → Vos applications → Web (`</>`)** : enregistre une app,
+   puis copie l'objet `firebaseConfig` dans `config.js` (à la place de `firebase: null`).
+7. Pousse sur GitHub. Le site https://killerjohn33.github.io/NotrePlanning/ se met à jour en environ une minute.
+
+En local, il faut un serveur (le mode Firebase ne marche pas en `file://`), par exemple `python -m http.server 8000`.
+Pense alors à autoriser aussi `localhost` dans l'étape 3 (il l'est normalement par défaut).
 
 ### Relier les deux plannings
 
 1. Chacun crée son compte.
 2. L'un ouvre **⚙ Réglages → Créer un code d'invitation** et envoie le code à l'autre.
-3. L'autre ouvre **⚙ Réglages**, saisit le code, puis clique sur **Rejoindre**. Les agendas sont maintenant croisés.
+3. L'autre ouvre **⚙ Réglages**, saisit le code, puis clique sur **Rejoindre**. La liaison se finalise automatiquement
+   dès que la première personne a l'app ouverte. Les agendas sont alors croisés.
 
-« Arrêter le partage » délie les comptes. Chacun garde ses propres événements.
+« Arrêter le partage » délie les deux comptes. Chacun garde ses propres événements.
+
+### Sécurité
+
+Tout est contrôlé par [`firestore.rules`](firestore.rules). Les clés de `config.js` ne sont pas secrètes.
+- On ne voit le planning de quelqu'un que si les deux comptes sont reliés **réciproquement**, et la liaison n'est possible que par un code d'invitation.
+- Un événement privé est stocké sans titre, lieu ni notes. Ces détails vont dans `eventSecrets`, que seul l'auteur peut lire.
+- Seuls les événements « commun » sont modifiables par l'autre personne.
 
 ## Structure
 
@@ -44,9 +56,9 @@ avec des données d'exemple enregistrées dans le navigateur (rien n'est partag�
 | `index.html` | Structure de la page, dialogues |
 | `styles.css` | Styles (variables clair/sombre, responsive) |
 | `app.js` | Interface : vues, récurrences, créneaux libres, formulaires |
-| `store.js` | Accès aux données : Supabase ou mode démo (même interface) |
-| `config.js` | Clés Supabase |
-| `supabase/schema.sql` | Tables, sécurité RLS, fonctions (`list_events`, `create/join/leave_household`) |
+| `store.js` | Accès aux données : Firebase (écoute en temps réel) ou mode démo, avec la même interface |
+| `config.js` | Configuration web Firebase |
+| `firestore.rules` | Règles de sécurité Firestore |
 | `sw.js`, `manifest.webmanifest`, `icon.svg` | PWA (installation et hors-ligne) |
 
 ## Limites actuelles

@@ -1,0 +1,110 @@
+rules_version = '2';
+
+// Notre Planning — règles de sécurité Firestore.
+// À coller dans Firebase > Firestore Database > Règles, puis « Publier ».
+//
+// Collections :
+//   users/{uid}          profil (prénom, couleur) + liaison (partner_id, invite_code)
+//   invites/{code}       code d'invitation : { from, accepted_by, created_at }
+//   events/{id}          événements ; un événement privé n'y contient ni titre, ni lieu, ni notes
+//   eventSecrets/{id}    détails des événements privés, lisibles par leur seul auteur
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function userData(id) { return get(/databases/$(database)/documents/users/$(id)).data; }
+    function myPartner() { return userData(uid()).get('partner_id', null); }
+    // Deux comptes sont reliés seulement si chacun pointe vers l'autre.
+    function isMutualPartner(other) {
+      return other != uid() && myPartner() == other && userData(other).get('partner_id', null) == uid();
+    }
+    function optStr(d, key, max) {
+      return d[key] == null || (d[key] is string && d[key].size() <= max);
+    }
+
+    // Profils ---------------------------------------------------------------
+    function validProfile(d) {
+      return d.keys().hasOnly(['display_name', 'color', 'partner_id', 'invite_code'])
+        && d.display_name is string && d.display_name.size() <= 60
+        && d.color is string && d.color.matches('^#[0-9a-fA-F]{6}$')
+        && optStr(d, 'invite_code', 12);
+    }
+    function inviteData(code) { return get(/databases/$(database)/documents/invites/$(code)).data; }
+    // On ne peut se relier à quelqu'un qu'au travers d'une invitation valide.
+    function validPartnerChange(d, old) {
+      let p = d.get('partner_id', null);
+      return p == null
+        || p == old.get('partner_id', null)
+        || (d.get('invite_code', null) is string
+            && exists(/databases/$(database)/documents/invites/$(d.invite_code))
+            && ((inviteData(d.invite_code).from == p && inviteData(d.invite_code).accepted_by == uid())
+                || (inviteData(d.invite_code).from == uid() && inviteData(d.invite_code).accepted_by == p)));
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (userId == uid() || myPartner() == userId);
+      allow create: if signedIn() && userId == uid() && validProfile(request.resource.data)
+        && request.resource.data.partner_id == null && request.resource.data.invite_code == null;
+      allow update: if signedIn() && userId == uid() && validProfile(request.resource.data)
+        && validPartnerChange(request.resource.data, resource.data);
+    }
+
+    // Invitations -----------------------------------------------------------
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && code.size() >= 6 && code.size() <= 12
+        && request.resource.data.keys().hasOnly(['from', 'accepted_by', 'created_at'])
+        && request.resource.data.from == uid() && request.resource.data.accepted_by == null;
+      // Accepter : une seule fois, par quelqu'un d'autre que l'auteur.
+      allow update: if signedIn() && resource.data.accepted_by == null && resource.data.from != uid()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accepted_by'])
+        && request.resource.data.accepted_by == uid();
+      allow delete: if signedIn() && (resource.data.from == uid() || resource.data.accepted_by == uid());
+    }
+
+    // Événements ------------------------------------------------------------
+    function validEvent(d) {
+      return d.keys().hasOnly(['owner_id', 'title', 'notes', 'location', 'start_at', 'end_at', 'all_day',
+                               'category', 'is_private', 'recurrence', 'recurrence_until', 'updated_at'])
+        && d.title is string && d.title.size() <= 200
+        && optStr(d, 'notes', 4000) && optStr(d, 'location', 200)
+        && d.start_at is string && d.end_at is string && d.end_at > d.start_at
+        && d.all_day is bool && d.is_private is bool
+        && d.category in ['pro', 'perso', 'commun']
+        && d.recurrence in ['none', 'daily', 'weekdays', 'weekly', 'monthly']
+        && optStr(d, 'recurrence_until', 10)
+        && (d.is_private
+              ? d.category != 'commun' && d.title == '' && d.notes == null && d.location == null
+              : d.title.size() >= 1);
+    }
+
+    match /events/{eventId} {
+      allow read: if signedIn()
+        && (resource.data.owner_id == uid() || isMutualPartner(resource.data.owner_id));
+      allow create: if signedIn() && request.resource.data.owner_id == uid() && validEvent(request.resource.data);
+      // Les événements « commun » sont modifiables par les deux.
+      allow update: if signedIn() && validEvent(request.resource.data)
+        && request.resource.data.owner_id == resource.data.owner_id
+        && (resource.data.owner_id == uid()
+            || (resource.data.category == 'commun' && request.resource.data.category == 'commun'
+                && isMutualPartner(resource.data.owner_id)));
+      allow delete: if signedIn()
+        && (resource.data.owner_id == uid()
+            || (resource.data.category == 'commun' && isMutualPartner(resource.data.owner_id)));
+    }
+
+    match /eventSecrets/{eventId} {
+      allow read, delete: if signedIn() && resource.data.owner_id == uid();
+      allow create: if signedIn() && validSecret(request.resource.data);
+      allow update: if signedIn() && resource.data.owner_id == uid() && validSecret(request.resource.data);
+    }
+    function validSecret(d) {
+      return d.keys().hasOnly(['owner_id', 'title', 'notes', 'location'])
+        && d.owner_id == uid()
+        && d.title is string && d.title.size() >= 1 && d.title.size() <= 200
+        && optStr(d, 'notes', 4000) && optStr(d, 'location', 200);
+    }
+  }
+}

@@ -533,6 +533,9 @@
     if (partner) {
       share = `<p>Planning partagé avec <span class="dot" style="--c:${esc(partner.color)}"></span> <strong>${esc(partner.display_name)}</strong>.</p>
         <div><button class="btn danger" data-act="leave">Arrêter le partage</button></div>`;
+    } else if (household?.waiting) {
+      share = `<p>Liaison en cours… Elle se finalise automatiquement dès que l’autre personne ouvre l’app.</p>
+        <div><button class="btn danger" data-act="leave">Annuler</button></div>`;
     } else if (household) {
       share = `<p>Envoie ce code à la personne avec qui partager ton planning :</p>
         <div class="code-box"><code>${esc(household.invite_code)}</code><button class="btn" data-act="copy">Copier</button></div>
@@ -671,7 +674,14 @@
       toastError(err);
     }
     load();
-    if (!unsubscribe) unsubscribe = store.subscribe(debounce(load, 400));
+    // Toute modification (de l'un ou de l'autre) rafraîchit profils, plannings et réglages.
+    if (!unsubscribe) {
+      unsubscribe = store.subscribe(debounce(async () => {
+        try { await loadProfiles(); } catch (err) { console.error(err); }
+        if (setDlg.open && !setDlg.contains(document.activeElement?.closest('form'))) renderSettings();
+        load();
+      }, 300));
+    }
   }
 
   /* Utilitaires --------------------------------------------------------------------- */
@@ -698,12 +708,17 @@
     toastTimer = setTimeout(() => { try { t.hidePopover(); } catch { /* idem */ } }, 2800);
   }
   function translateError(err) {
+    const code = err?.code || '';
     const msg = err?.message || String(err);
-    if (/Invalid login credentials/i.test(msg)) return 'E-mail ou mot de passe incorrect.';
-    if (/Email not confirmed/i.test(msg)) return 'Confirme d’abord ton e-mail (lien reçu à l’inscription).';
-    if (/already registered/i.test(msg)) return 'Un compte existe déjà avec cet e-mail.';
-    if (/Password should be/i.test(msg)) return 'Mot de passe trop court (6 caractères minimum).';
-    if (/Failed to fetch|NetworkError/i.test(msg)) return 'Connexion impossible. Vérifie ta connexion internet.';
+    if (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(code)) return 'E-mail ou mot de passe incorrect.';
+    if (code === 'auth/email-already-in-use') return 'Un compte existe déjà avec cet e-mail.';
+    if (code === 'auth/weak-password') return 'Mot de passe trop court (6 caractères minimum).';
+    if (code === 'auth/invalid-email') return 'Adresse e-mail invalide.';
+    if (code === 'auth/too-many-requests') return 'Trop de tentatives. Réessaie dans quelques minutes.';
+    if (code === 'auth/network-request-failed' || code === 'unavailable' || /Failed to fetch|NetworkError/i.test(msg)) {
+      return 'Connexion impossible. Vérifie ta connexion internet.';
+    }
+    if (code === 'permission-denied') return 'Action non autorisée.';
     return msg;
   }
   function toastError(err) {
@@ -824,8 +839,8 @@
       else if (user && user.id !== state.user?.id) enterApp(user);
     });
     const user = await store.getUser();
-    if (user) enterApp(user);
-    else showAuth();
+    if (!user) showAuth();
+    else if (user.id !== state.user?.id) enterApp(user);
 
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
