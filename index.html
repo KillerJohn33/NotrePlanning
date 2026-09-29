@@ -157,11 +157,10 @@
   <div class="dlg-body">
     <p class="hint">Fichier Excel du planning collaborateurs (colonnes Date, Collaborateur, Demi-journée, Planification).
       Il est lu sur ton appareil et n’est envoyé nulle part : seuls tes créneaux sont enregistrés.</p>
-    <label class="field">Fichier<input type="file" id="impFile" accept=".xlsx,.xlsm,.xls,.ods"></label>
+    <!-- Pas d'attribut accept : sur iPhone il grise les .xlsm (Excel avec macros). -->
+    <label class="field">Fichier<input type="file" id="impFile"></label>
     <p id="impStatus" class="imp-status" hidden></p>
-  </div>
-  <form id="impForm" hidden>
-    <div class="dlg-body">
+    <form id="impForm" class="imp-form" hidden>
       <div class="row">
         <label class="field">Collaborateur<select name="person" required></select></label>
         <label class="field">À partir du<input type="date" name="from" required></label>
@@ -182,13 +181,13 @@
         </div>
       </details>
       <div id="impPreview" class="imp-preview"></div>
-    </div>
-    <div class="dlg-foot">
-      <span class="spacer"></span>
-      <button type="button" class="btn" data-close>Annuler</button>
-      <button type="submit" class="btn primary" id="impSubmit">Importer</button>
-    </div>
-  </form>
+    </form>
+  </div>
+  <div class="dlg-foot">
+    <span class="spacer"></span>
+    <button type="button" class="btn" data-close>Annuler</button>
+    <button type="submit" class="btn primary" id="impSubmit" form="impForm" disabled>Importer</button>
+  </div>
 </dialog>
 
 <div id="toast" class="toast" popover="manual" role="status"></div>

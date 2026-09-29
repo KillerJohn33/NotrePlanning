@@ -727,6 +727,7 @@
     workbook = null;
     $('#impFile').value = '';
     impForm.hidden = true;
+    $('#impSubmit').disabled = true;
     impStatus('');
     impDlg.showModal();
   }
@@ -734,6 +735,7 @@
   async function onImportFile() {
     const file = $('#impFile').files[0];
     impForm.hidden = true;
+    $('#impSubmit').disabled = true;
     if (!file) return;
     impStatus('Lecture du fichier… (quelques secondes pour un gros planning)');
     await new Promise(r => setTimeout(r, 50)); // laisse le message s'afficher avant le calcul
