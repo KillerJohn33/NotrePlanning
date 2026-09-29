@@ -32,6 +32,9 @@
   --nav-space: 108px; /* place laissée sous le contenu pour ne pas être caché par la barre */
   --day-min: 0px; /* largeur mini d'un jour en vue semaine (voir mobile) */
   --perm: #d97706;
+  --off: #eab308;
+  --off-bg: #fef6c7;
+  --off-text: #854d0e;
 }
 /* Thème sombre : automatique (réglage de l'appareil) sauf si « Clair » est forcé,
    et toujours quand « Sombre » est forcé (bloc recopié plus bas). */
@@ -59,6 +62,9 @@
     --nav-bg: #1f232b;
     --nav-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 6px 24px rgba(0, 0, 0, .45);
     --perm: #fbbf24;
+    --off: #facc15;
+    --off-bg: #332d12;
+    --off-text: #fde68a;
   }
 }
 :root[data-theme="dark"] {
@@ -84,6 +90,9 @@
   --nav-bg: #1f232b;
   --nav-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 6px 24px rgba(0, 0, 0, .45);
   --perm: #fbbf24;
+  --off: #facc15;
+  --off-bg: #332d12;
+  --off-text: #fde68a;
 }
 
 * { box-sizing: border-box; }
@@ -576,3 +585,26 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .perm-tag { font-size: 12px; font-weight: 600; color: var(--perm); background: color-mix(in srgb, var(--perm) 15%, var(--surface-2)); }
 .perm-tag .dot { width: 6px; height: 6px; }
 .i.i-perm { color: var(--perm); stroke-width: 2.4; }
+
+/* Congés : jaune sur toute la période */
+.mo-cell.is-off, .mo-cell.is-off:hover { background: var(--off-bg); }
+.off-bar {
+  align-self: stretch; margin: 1px -5px 2px; height: 18px; padding: 0 6px;
+  display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap;
+  background: var(--off); color: #422006; font-size: 11px; font-weight: 700;
+}
+.off-bar.is-first { margin-left: 2px; border-top-left-radius: 9px; border-bottom-left-radius: 9px; }
+.off-bar.is-last { margin-right: 2px; border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
+.off-bar .i { width: 12px; height: 12px; stroke-width: 2.4; flex: none; }
+.off-bar span { overflow: hidden; text-overflow: ellipsis; }
+.wk-col.is-off { background-color: var(--off-bg); }
+.chip-ev.is-off { background: var(--off); border-left-color: var(--off); color: #422006; font-weight: 700; }
+.chip-ev.is-off .i { color: #422006; }
+.ag-ev.is-off { background: var(--off-bg); border-color: color-mix(in srgb, var(--off) 45%, transparent); }
+.ag-ev.is-off .ag-bar { background: var(--off); }
+.ag-ev.is-off strong { color: var(--off-text); }
+
+@media (max-width: 700px) {
+  .off-bar { margin: 1px -4px 2px; height: 16px; font-size: 10px; padding: 0 4px; }
+  .off-bar .i { display: none; }
+}

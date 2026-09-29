@@ -155,6 +155,11 @@
       ? `<span class="tag perm-tag" title="${esc(title)}">${ic('perm')} Permanence ${dots}</span>`
       : `<span class="pm" title="${esc(title)}" aria-label="${esc(title)}">${ic('perm')}${dots}</span>`;
   }
+  // Agenda et fiche du jour : la permanence et le télétravail sont indiqués sur les créneaux ;
+  // l'étiquette « Télétravail » près de la date ne reste que si aucun créneau ne la porte.
+  const dayRemoteNote = (d, items) => (items.some(o => isRemoteWork(o.ev, o.start)) ? '' : remoteBadge(d, true));
+  // Congés : événement « journée » intitulé Congés… ou Vacances…
+  const isOff = ev => ev.all_day && /^(cong|vacances)/.test(normTitle(ev.title));
   const iconOf = (ev, start) => (isPerm(ev) ? ic('perm', 'i-perm')
     : ic(isRemoteWork(ev, start) ? 'laptop' : (!isMasked(ev) && presetIcon(ev.title)) || CATS[ev.category].icon));
 
@@ -380,7 +385,7 @@
       html += `<div class="wk-row wk-allday" style="grid-template-columns:${cols}"><div class="wk-label wk-corner">Journée</div>`;
       for (const d of dates) {
         const items = allDay.filter(o => o.start < addDays(d, 1) && o.end > d);
-        html += `<div>${items.map(o => `<button class="chip-ev" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${ic(CATS[o.ev.category].icon)} ${esc(o.ev.title)}</button>`).join('')}</div>`;
+        html += `<div>${items.map(o => `<button class="chip-ev ${isOff(o.ev) ? 'is-off' : ''}" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${ic(CATS[o.ev.category].icon)} ${esc(o.ev.title)}</button>`).join('')}</div>`;
       }
       html += '</div>';
     }
@@ -408,7 +413,8 @@
       segs.forEach(x => (groups[x.lane] ||= []).push(x));
       Object.values(groups).forEach(layoutColumns);
 
-      html += `<div class="wk-col ${sameDay(d, now) ? 'is-today' : ''}" data-date="${toDateInput(d)}">`;
+      const offDay = occ.some(o => isOff(o.ev) && o.start < dayEnd && o.end > d);
+      html += `<div class="wk-col ${sameDay(d, now) ? 'is-today' : ''} ${offDay ? 'is-off' : ''}" data-date="${toDateInput(d)}">`;
       if (split) html += '<div class="lane-divider"></div>';
       for (const x of segs) {
         const [l, w] = LANE[x.lane];
@@ -446,6 +452,18 @@
       title="${esc(tip)}"><span class="ev-title">${iconOf(ev, o.start)} ${esc(ev.title)}</span><span class="ev-time">${time}</span></button>`;
   }
 
+  // Ruban jaune des congés, continu d'une case à l'autre : arrondi au premier et au dernier
+  // jour de la période, libellé au début de la période et au début de chaque semaine.
+  function offRibbon(off, d, lastOfMonth) {
+    if (!off) return '';
+    const first = sameDay(off.start, d);
+    const last = sameDay(addDays(off.end, -1), d);
+    const rowStart = first || d.getDay() === 1 || d.getDate() === 1;
+    const who = state.partner && !off.ev.is_mine ? ` · ${off.ev.category === 'commun' ? 'ensemble' : nameOf(off.ev)}` : '';
+    return `<div class="off-bar${first ? ' is-first' : ''}${last || lastOfMonth || d.getDay() === 0 ? ' is-last' : ''}" title="${esc(off.ev.title + who)}">`
+      + (rowStart ? `${ic('sun')}<span>${esc(off.ev.title)}</span>` : '') + '</div>';
+  }
+
   // Vue mois : les mois s'enchaînent verticalement (défilement continu, chargement au fil de l'eau).
   function renderMonth(main) {
     const { from, to } = state.range;
@@ -475,9 +493,11 @@
       html += '<div class="mo-cell is-blank"></div>'.repeat(lead);
       for (let day = 1; day <= nDays; day++) {
         const d = new Date(m.getFullYear(), m.getMonth(), day);
-        const items = byDay.get(toDateInput(d)) || [];
-        html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''}" data-goto="${toDateInput(d)}">
-          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div><div class="mo-events">`;
+        const all = byDay.get(toDateInput(d)) || [];
+        const off = all.find(o => isOff(o.ev));
+        const items = all.filter(o => !isOff(o.ev));
+        html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? 'is-off' : ''}" data-goto="${toDateInput(d)}">
+          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div>${offRibbon(off, d, day === nDays)}<div class="mo-events">`;
         for (const o of items.slice(0, max)) {
           const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
           html += `<button class="mo-ev" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}"><i></i><span>${time}${esc(o.ev.title)}</span></button>`;
@@ -535,7 +555,7 @@
         .filter(o => o.start < dEnd && o.end > d)
         .sort((a, b) => (b.ev.all_day - a.ev.all_day) || (a.start - b.start));
       html += `<section class="ag-day"><header class="ag-date"><span class="ag-dow">${fmt(d, { weekday: 'long' })}</span>
-        <span class="ag-dnum">${fmt(d, { day: 'numeric', month: 'long' })}</span>${sameDay(d, today) ? '<span class="badge">Aujourd’hui</span>' : ''}${permBadge(d, occ, true)}${remoteBadge(d, true)}</header>`;
+        <span class="ag-dnum">${fmt(d, { day: 'numeric', month: 'long' })}</span>${sameDay(d, today) ? '<span class="badge">Aujourd’hui</span>' : ''}${dayRemoteNote(d, items)}</header>`;
       if (items.length) {
         html += '<div class="ag-list">' + items.map(o => agendaItem(o, d, dEnd)).join('') + '</div>';
       } else {
@@ -565,7 +585,7 @@
     if (ev.is_private) tags.push(`<span class="tag">${ic('lock')} Privé</span>`);
     if (ev.recurrence && ev.recurrence !== 'none') tags.push(`<span class="tag">${ic('repeat')} ${RECUR_LABEL[ev.recurrence]}</span>`);
     if (ev.location) tags.push(`<span class="tag">${ic('pin')} ${esc(ev.location)}</span>`);
-    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''}" data-ev="${ev.id}" style="--c:${esc(colorOf(ev))}">
+    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isOff(ev) ? 'is-off' : ''}" data-ev="${ev.id}" style="--c:${esc(colorOf(ev))}">
       <span class="ag-time">${time}</span><span class="ag-bar"></span>
       <span class="ag-body"><strong>${esc(ev.title)}</strong><span class="ag-meta">${tags.join('')}</span></span></button>`;
   }
@@ -654,7 +674,7 @@
     const items = occ.sort((a, b) => (b.ev.all_day - a.ev.all_day) || (a.start - b.start));
     const year = d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {};
     $('#dayDlgTitle').textContent = cap(fmt(d, { weekday: 'long', day: 'numeric', month: 'long', ...year }));
-    const badges = `${sameDay(d, new Date()) ? '<span class="badge">Aujourd’hui</span>' : ''}${permBadge(d, occ, true)}${remoteBadge(d, true)}`;
+    const badges = `${sameDay(d, new Date()) ? '<span class="badge">Aujourd’hui</span>' : ''}${dayRemoteNote(d, items)}`;
     let html = badges ? `<div class="day-badges">${badges}</div>` : '';
     html += items.length
       ? `<div class="ag-list">${items.map(o => agendaItem(o, d, dEnd)).join('')}</div>`
