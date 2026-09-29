@@ -168,8 +168,9 @@
     <label class="field">Fichier<input type="file" id="impFile"></label>
     <p id="impStatus" class="imp-status" hidden></p>
     <form id="impForm" class="imp-form" hidden>
+      <p id="impPersonFixed" class="imp-person" hidden></p>
       <div class="row">
-        <label class="field">Collaborateur<select name="person" required></select></label>
+        <label class="field" id="impPersonField">Collaborateur<select name="person" required></select></label>
         <label class="field">À partir du<input type="date" name="from" required></label>
       </div>
       <details class="imp-hours">

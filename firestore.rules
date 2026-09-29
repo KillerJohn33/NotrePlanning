@@ -26,10 +26,12 @@ service cloud.firestore {
 
     // Profils ---------------------------------------------------------------
     function validProfile(d) {
-      return d.keys().hasOnly(['display_name', 'color', 'partner_id', 'invite_code'])
+      return d.keys().hasOnly(['display_name', 'color', 'partner_id', 'invite_code', 'work_name'])
         && d.display_name is string && d.display_name.size() <= 60
         && d.color is string && d.color.matches('^#[0-9a-fA-F]{6}$')
-        && optStr(d, 'invite_code', 12);
+        && optStr(d, 'invite_code', 12)
+        // Nom dans le planning Excel du travail, mémorisé pour les imports (absent au départ).
+        && (d.get('work_name', null) == null || (d.work_name is string && d.work_name.size() <= 100));
     }
     function inviteData(code) { return get(/databases/$(database)/documents/invites/$(code)).data; }
     // On ne peut se relier à quelqu'un qu'au travers d'une invitation valide.

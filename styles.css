@@ -322,6 +322,8 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 
 /* Import du planning ---------------------------------------------------------------- */
 .imp-form { display: flex; flex-direction: column; gap: 12px; }
+.imp-person { margin: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 15px; }
+.imp-person .link { margin-left: auto; }
 .field input[type="file"] { padding: 7px; }
 .imp-status { margin: 0; font-size: 14px; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); }
 .imp-hours summary { cursor: pointer; font-size: 14px; color: var(--muted); padding: 4px 0; }

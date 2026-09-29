@@ -748,15 +748,36 @@
     if (!workbook.people.length) return impStatus('Aucun collaborateur trouvé dans ce fichier.');
     const prefs = loadImportPrefs();
     const I = impForm.elements;
-    const match = workbook.people.find(p => p.key === prefs.person);
+    // Nom mémorisé dans le profil (tous appareils), sinon sur cet appareil.
+    const savedKey = state.me?.work_name ? PlanningImport.nameKey(state.me.work_name) : prefs.person;
+    const match = savedKey && workbook.people.find(p => p.key === savedKey);
     I.person.innerHTML = (match ? '' : '<option value="">— Choisis ton nom —</option>')
       + workbook.people.map(p => `<option value="${esc(p.key)}"${p === match ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
     I.from.value = toDateInput(new Date());
     const hours = { ...PlanningImport.DEFAULT_HOURS, ...prefs.hours };
     for (const k of Object.keys(PlanningImport.DEFAULT_HOURS)) I[k].value = hours[k];
-    impStatus(`${workbook.people.length} collaborateurs trouvés dans « ${workbook.fileName} ».`);
+    if (match) {
+      impStatus('');
+      showPersonChoice(false, match);
+    } else {
+      impStatus(savedKey
+        ? `Ton nom (${state.me?.work_name || 'mémorisé'}) est introuvable dans ce fichier : choisis-le dans la liste.`
+        : 'Choisis ton nom dans la liste : il sera mémorisé pour les prochains imports.');
+      showPersonChoice(true);
+    }
     impForm.hidden = false;
     renderImportPreview();
+  }
+
+  // Nom reconnu : on affiche seulement « Planning de … » ; la liste n'apparaît que sur demande.
+  function showPersonChoice(visible, person) {
+    $('#impPersonField').hidden = !visible;
+    const fixed = $('#impPersonFixed');
+    fixed.hidden = visible;
+    if (!visible) {
+      fixed.innerHTML = `👤 Planning de <strong>${esc(person.name)}</strong> <button type="button" class="link" id="impChangePerson">Changer</button>`;
+      $('#impChangePerson').onclick = () => showPersonChoice(true);
+    }
   }
 
   function currentImport() {
@@ -808,6 +829,11 @@
     const imp = currentImport();
     if (!imp?.events.length) return;
     try { localStorage.setItem(IMP_PREFS_KEY, JSON.stringify({ person: imp.person.key, hours: imp.hours })); } catch { /* ignoré */ }
+    if (state.me && state.me.work_name !== imp.person.name) {
+      store.updateMe({ work_name: imp.person.name })
+        .then(() => { state.me.work_name = imp.person.name; })
+        .catch(err => console.error(err)); // non bloquant : le nom reste mémorisé sur cet appareil
+    }
     await withBusy($('#impSubmit'), async () => {
       const { added, removed } = await store.replaceImported(PlanningImport.IMPORT_KEY, imp.from, imp.to, imp.events);
       impDlg.close();
