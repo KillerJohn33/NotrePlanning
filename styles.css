@@ -441,8 +441,10 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .set-section p { margin: 0; }
 /* Suggestions du formulaire : rangée défilante de petites capsules */
 .presets {
-  display: flex; gap: 6px; overflow-x: auto; margin: 0 -20px; padding: 2px 20px 4px;
+  display: flex; gap: 6px; overflow-x: auto; margin: 0; padding: 2px 0 4px;
   scrollbar-width: none; overscroll-behavior-x: contain;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }
 .presets::-webkit-scrollbar { display: none; }
 .preset {
@@ -573,7 +575,6 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
   .mo-ev span, .mo-more { display: none; }
   .agenda { padding: 4px 12px var(--nav-space); }
   .tab { font-size: 10px; letter-spacing: -.1px; padding: 7px 2px 6px; }
-  .row { flex-wrap: wrap; }
   /* Sur téléphone, le navigateur floute le haut de l'écran (heure, encoche) : on décale
      tout le contenu sous cette zone. */
   :root { --top-gap: calc(env(safe-area-inset-top, 0px) + 8px); }
@@ -794,3 +795,25 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
   .off-bar { margin: 1px -4px 2px; height: 16px; font-size: 10px; padding: 0 4px; }
   .off-bar .i { display: none; }
 }
+
+/* Formulaires sur iPhone :
+   - texte des champs à 16 px minimum, sinon Safari zoome toute la page au toucher d'un champ ;
+   - champs date / heure : apparence native neutralisée, sinon ils s'écrasent quand ils sont vides. */
+.field input[type="date"], .field input[type="time"] {
+  -webkit-appearance: none; appearance: none; min-height: 42px; display: block; text-align: left;
+}
+.field input::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; }
+@media (max-width: 700px) {
+  .field input, .field select, .field textarea, .input { font-size: 16px; }
+  .title-input { font-size: 18px; }
+}
+
+/* Fiche de lecture d'un événement */
+.ev-view-title { display: flex; align-items: center; gap: 10px; }
+.ev-view-title .dot { width: 12px; height: 12px; }
+.ev-view-when { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; margin: 0; }
+.ev-view-when .i { color: var(--muted); }
+.ev-view-line { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; }
+.ev-view-line .i { color: var(--muted); }
+.ev-view-notes { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px;
+  padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }

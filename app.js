@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v28';
+  const APP_VERSION = 'v29';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -742,15 +742,12 @@
     main.innerHTML = html + '</div>';
   }
 
-  function agendaItem(o, d, dEnd) {
-    const ev = o.ev;
-    const time = ev.all_day
-      ? 'Journée'
-      : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
+  // Étiquettes d'un événement (personne, type, permanence, télétravail, privé, répétition, âge).
+  function eventTags(ev, start) {
     const tags = [];
     if (state.partner) tags.push(ev.category === 'commun' ? `<span class="tag">${ic('users')} Ensemble</span>` : `<span class="tag"><span class="dot" style="--c:${esc(personColorOf(ev))}"></span>${esc(nameOf(ev))}</span>`);
     const perm = isPerm(ev);
-    const remote = isRemoteWork(ev, o.start);
+    const remote = isRemoteWork(ev, start);
     if (perm) tags.push(`<span class="tag perm-tag">${ic('perm')} Permanence</span>`);
     if (remote) tags.push(`<span class="tag">${ic('laptop')} Télétravail</span>`);
     const shift = !perm && shiftIdOf(ev);
@@ -759,8 +756,17 @@
     if (ev.is_private) tags.push(`<span class="tag">${ic('lock')} Privé</span>`);
     if (ev.recurrence && ev.recurrence !== 'none') tags.push(`<span class="tag">${ic('repeat')} ${RECUR_LABEL[ev.recurrence]}</span>`);
     // Anniversaire saisi avec la date de naissance comme début : âge atteint ce jour-là.
-    const age = ev.recurrence === 'yearly' ? o.start.getFullYear() - new Date(ev.start_at).getFullYear() : 0;
+    const age = ev.recurrence === 'yearly' ? start.getFullYear() - new Date(ev.start_at).getFullYear() : 0;
     if (age > 0) tags.push(`<span class="tag">${ic('cake')} ${age} ans</span>`);
+    return tags;
+  }
+
+  function agendaItem(o, d, dEnd) {
+    const ev = o.ev;
+    const time = ev.all_day
+      ? 'Journée'
+      : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
+    const tags = eventTags(ev, o.start);
     if (ev.location) tags.push(`<span class="tag">${ic('pin')} ${esc(ev.location)}</span>`);
     return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
       <span class="ag-time">${time}</span><span class="ag-bar"></span>
@@ -789,10 +795,43 @@
       }).join('');
   }
 
+  // Toucher un événement ouvre sa fiche de lecture ; « Modifier » ouvre ensuite le formulaire.
+  const evViewDlg = $('#evViewDlg');
+  let viewing = null; // { ev, occ }
+
   function openEvent(id, occMs) {
     // Hors de la période affichée (résultat de recherche), l'événement vient de la recherche.
     const ev = state.events.find(e => e.id === id) || searchPool.find(e => e.id === id);
-    if (ev) fillEventForm(ev, occMs ? new Date(Number(occMs)) : null);
+    if (!ev) return;
+    viewing = { ev, occ: occMs ? new Date(Number(occMs)) : null };
+    renderEventView();
+    if (!evViewDlg.open) evViewDlg.showModal();
+  }
+
+  function renderEventView() {
+    const { ev, occ } = viewing;
+    const start = occ || new Date(ev.start_at);
+    const end = new Date(start.getTime() + (new Date(ev.end_at) - new Date(ev.start_at)));
+    const day = d => cap(fmt(d, { weekday: 'long', day: 'numeric', month: 'long',
+      ...(d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) }));
+    let when;
+    if (ev.all_day) {
+      const last = addDays(end, -1);
+      when = sameDay(start, last) ? `${day(start)} · toute la journée` : `Du ${day(start)} au ${day(last)}`;
+    } else if (sameDay(start, end) || end.getTime() === addDays(startOfDay(start), 1).getTime()) {
+      when = `${day(start)} · ${fmtTime(start)} – ${fmtTime(end)}`;
+    } else {
+      when = `${day(start)} ${fmtTime(start)} → ${day(end)} ${fmtTime(end)}`;
+    }
+    $('#evViewTitle').innerHTML = `<span class="dot" style="--c:${esc(colorOf(ev))}"></span>${esc(ev.title)}`;
+    $('#evViewBody').innerHTML = `
+      <p class="ev-view-when">${ic('clock')} ${when}</p>
+      <div class="ag-meta">${eventTags(ev, start).join('')}</div>
+      ${ev.location ? `<p class="ev-view-line">${ic('pin')} ${esc(ev.location)}</p>` : ''}
+      ${ev.notes ? `<p class="ev-view-notes">${esc(ev.notes)}</p>` : ''}
+      ${ev.is_mine ? '' : `<p class="owner-note">${isMasked(ev) ? `Créneau privé de ${esc(nameOf(ev))}.`
+        : `Ajouté par ${esc(nameOf(ev))}${canEdit(ev) ? '' : ' (lecture seule)'}.`}</p>`}`;
+    $('#evViewEdit').hidden = !canEdit(ev);
   }
 
   function newEvent(start) {
@@ -2162,7 +2201,12 @@
       openEvent(r.dataset.ev, r.dataset.occ);
     };
 
-    for (const dlg of [evDlg, setDlg, impDlg, rmDlg, dayDlg, searchDlg]) {
+    $('#evViewEdit').onclick = () => {
+      evViewDlg.close();
+      fillEventForm(viewing.ev, viewing.occ);
+    };
+
+    for (const dlg of [evDlg, setDlg, impDlg, rmDlg, dayDlg, searchDlg, evViewDlg]) {
       dlg.addEventListener('click', e => {
         if (e.target === dlg || e.target.closest('[data-close]')) dlg.close();
       });

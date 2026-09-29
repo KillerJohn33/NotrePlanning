@@ -230,6 +230,20 @@
   </div>
 </dialog>
 
+<!-- Fiche de lecture d'un événement (« Modifier » ouvre le formulaire) -->
+<dialog id="evViewDlg" aria-labelledby="evViewTitle">
+  <div class="dlg-head">
+    <h2 id="evViewTitle" class="ev-view-title"></h2>
+    <button type="button" class="icon-btn" data-close aria-label="Fermer"><svg class="i"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="dlg-body" id="evViewBody"></div>
+  <div class="dlg-foot">
+    <span class="spacer"></span>
+    <button type="button" class="btn" data-close>Fermer</button>
+    <button type="button" class="btn primary" id="evViewEdit">Modifier</button>
+  </div>
+</dialog>
+
 <!-- Réglages -->
 <dialog id="settingsDlg" aria-labelledby="setDlgTitle">
   <div class="dlg-head">
