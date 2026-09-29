@@ -194,6 +194,7 @@ input, select, textarea { font: inherit; color: inherit; }
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
 }
+.filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip {
   height: 34px; padding: 0 14px; border-radius: 999px; font-size: 14px; font-weight: 600;
@@ -548,17 +549,25 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
   .nav { gap: 4px; }
   .nav .btn { padding: 0 10px; }
   .nav h1 { font-size: 15px; margin-left: 4px; }
-  /* Filtres sur une seule ligne : types en boutons ronds (icône seule),
-     « Ensemble » réduit à son icône. */
-  .filters { padding: 6px 12px; gap: 8px; }
-  #whoSeg, .chips { flex: none; }
+  /* Filtres sur une seule ligne : si tout ne tient pas, la rangée glisse au doigt ;
+     « Ensemble » est réduit à son icône. */
+  .filters { padding: 4px 0 6px; gap: 4px; }
+  .filter-row {
+    flex: 1 1 100%; min-width: 0; flex-wrap: nowrap; gap: 8px;
+    overflow-x: auto; padding: 4px 12px 6px; scrollbar-width: none; overscroll-behavior-x: contain;
+  }
+  .filter-row {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  #whoSeg, .chips { flex: none; flex-wrap: nowrap; }
   #whoSeg button { padding: 5px 10px; font-size: 13px; }
   #whoSeg [data-who="both"] .who-label { display: none; }
   .chips { gap: 6px; }
-  .chip[data-cat] { width: 36px; height: 36px; padding: 0; justify-content: center; }
-  .chip[data-cat] .chip-label { display: none; }
-  .chip[data-cat] .i { width: 18px; height: 18px; }
-  .demo-banner { margin-left: 0; flex-basis: 100%; }
+  .chip[data-cat] { height: 34px; padding: 0 12px; font-size: 13px; gap: 5px; }
+  .chip[data-cat] .i { width: 16px; height: 16px; }
+  .demo-banner { margin: 0 12px; flex-basis: calc(100% - 24px); }
   .mo-grid { grid-auto-rows: minmax(62px, auto); }
   .mo-title { font-size: 16px; padding: 12px 12px 6px; }
   :root { --day-min: calc((100vw - 52px) / 3); }

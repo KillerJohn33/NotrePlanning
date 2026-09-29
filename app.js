@@ -134,10 +134,10 @@
     const title = `Permanence : ${people.map(p => p.name).join(', ')}`;
     const dots = state.partner ? people.map(p => `<i class="dot" style="--c:${esc(p.color)}"></i>`).join('') : '';
     return withLabel
-      ? `<span class="tag perm-tag" title="${esc(title)}">${ic('bell')} Permanence ${dots}</span>`
-      : `<span class="pm" title="${esc(title)}" aria-label="${esc(title)}">${ic('bell')}${dots}</span>`;
+      ? `<span class="tag perm-tag" title="${esc(title)}">${ic('perm')} Permanence ${dots}</span>`
+      : `<span class="pm" title="${esc(title)}" aria-label="${esc(title)}">${ic('perm')}${dots}</span>`;
   }
-  const iconOf = (ev, start) => (isPerm(ev) ? ic('bell', 'i-perm')
+  const iconOf = (ev, start) => (isPerm(ev) ? ic('perm', 'i-perm')
     : ic(isRemoteWork(ev, start) ? 'laptop' : CATS[ev.category].icon));
 
   function getRange() {
@@ -540,7 +540,7 @@
     if (state.partner) tags.push(ev.category === 'commun' ? `<span class="tag">${ic('users')} Ensemble</span>` : `<span class="tag"><span class="dot" style="--c:${esc(colorOf(ev))}"></span>${esc(nameOf(ev))}</span>`);
     const perm = isPerm(ev);
     const remote = isRemoteWork(ev, o.start);
-    if (perm) tags.push(`<span class="tag perm-tag">${ic('bell')} Permanence</span>`);
+    if (perm) tags.push(`<span class="tag perm-tag">${ic('perm')} Permanence</span>`);
     if (remote) tags.push(`<span class="tag">${ic('laptop')} Télétravail</span>`);
     if (!perm && !remote) tags.push(`<span class="tag tag-cat" data-cat="${ev.category}">${ic(CATS[ev.category].icon)} ${CATS[ev.category].label}</span>`);
     if (ev.is_private) tags.push(`<span class="tag">${ic('lock')} Privé</span>`);
