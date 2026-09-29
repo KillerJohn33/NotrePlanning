@@ -10,4 +10,6 @@ window.PLANNING_CONFIG = {
     messagingSenderId: '898356784433',
     appId: '1:898356784433:web:a1fd380650c1a138a09410',
   },
+  // Clé publique VAPID des notifications (la clé privée est un secret du dépôt GitHub).
+  vapidPublicKey: 'BEWcivnndq5VWyJH1ZTBaZSApExFZrIU6A0mwgNaAPzW11Rc0wdsPbiYX_eGB8gFeMtBnR9yiGQQoKhpN--SoUc',
 };

@@ -9,6 +9,8 @@ rules_version = '2';
 //   events/{id}          événements ; un événement privé n'y contient ni titre, ni lieu, ni notes
 //   eventSecrets/{id}    détails des événements privés, lisibles par leur seul auteur
 //   remoteDays/{uid}     jours de télétravail
+//   pushSubs/{id}        abonnements aux notifications d'un appareil (lus par la tâche d'envoi)
+//   notifMeta/…          état de la tâche d'envoi (accès serveur uniquement)
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -26,7 +28,9 @@ service cloud.firestore {
 
     // Profils ---------------------------------------------------------------
     function validProfile(d) {
-      return d.keys().hasOnly(['display_name', 'color', 'partner_id', 'invite_code', 'work_name', 'shift_types'])
+      return d.keys().hasOnly(['display_name', 'color', 'partner_id', 'invite_code', 'work_name', 'shift_types', 'notif'])
+        // Préférences de notifications : { reminders, reminderMin, partner, morning }.
+        && (d.get('notif', null) == null || d.notif is map)
         // Types d'horaires personnels (ouverture, fermeture…) : au plus 12.
         && (d.get('shift_types', null) == null || (d.shift_types is list && d.shift_types.size() <= 12))
         && d.display_name is string && d.display_name.size() <= 60
@@ -73,7 +77,9 @@ service cloud.firestore {
     function validEvent(d) {
       return d.keys().hasOnly(['owner_id', 'title', 'notes', 'location', 'start_at', 'end_at', 'all_day',
                                'category', 'is_private', 'recurrence', 'recurrence_until', 'import_key',
-                               'updated_at'])
+                               'updated_at', 'updated_by'])
+        // Auteur de la dernière modification (sert aux notifications « a ajouté / a modifié »).
+        && (d.get('updated_by', null) == null || d.updated_by == request.auth.uid)
         && d.title is string && d.title.size() <= 200
         && optStr(d, 'notes', 4000) && optStr(d, 'location', 200)
         && d.start_at is string && d.end_at is string && d.end_at > d.start_at
@@ -109,6 +115,14 @@ service cloud.firestore {
       allow write: if signedIn() && userId == uid()
         && request.resource.data.keys().hasOnly(['dates'])
         && request.resource.data.dates is list && request.resource.data.dates.size() <= 1000;
+    }
+
+    // Abonnements aux notifications : chacun gère uniquement ceux de ses appareils.
+    match /pushSubs/{subId} {
+      allow read, delete: if signedIn() && resource.data.owner_id == uid();
+      allow create, update: if signedIn() && request.resource.data.owner_id == uid()
+        && request.resource.data.keys().hasOnly(['owner_id', 'subscription', 'ua', 'created_at'])
+        && request.resource.data.subscription is map;
     }
 
     match /eventSecrets/{eventId} {

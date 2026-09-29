@@ -9,3 +9,6 @@ Thumbs.db
 *.ods
 *.csv
 ~$*
+
+# Dépendances de la tâche de notifications
+node_modules/

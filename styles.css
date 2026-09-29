@@ -648,3 +648,9 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
   .shift-row { grid-template-columns: 10px minmax(0, 1fr) 78px 78px 34px; gap: 4px; }
   .shift-row .input { padding: 7px 5px; font-size: 13px; }
 }
+
+/* Réglages → Notifications */
+.notif-form { display: flex; flex-direction: column; gap: 10px; }
+.notif-on { margin: 0; display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--cat-perso); }
+.notif-delay { flex-direction: row; align-items: center; gap: 10px; margin-left: 26px; }
+.notif-delay select { width: auto; }

@@ -1,0 +1,11 @@
+{
+  "name": "notre-planning-notifier",
+  "private": true,
+  "description": "Envoi des notifications de Notre Planning (lancé par GitHub Actions)",
+  "main": "notify.js",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "web-push": "^3.6.7"
+  }
+}

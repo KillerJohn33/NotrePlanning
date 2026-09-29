@@ -61,6 +61,17 @@ sur plusieurs mois, puis on enregistre. Ces jours sont stockés à part des év�
 du planning Excel ne les efface pas. Ils s'affichent avec une icône 💻 sur la journée, et les créneaux pro de ces jours-là prennent l'icône 💻.
 Le partenaire relié les voit aussi.
 
+### Notifications
+
+Chacun active les notifications sur son appareil dans **⚙ Réglages → Notifications**, puis choisit ce qu'il reçoit :
+rappel avant ses rendez-vous perso et communs (15 min, 30 min ou 1 h avant), alerte quand l'autre ajoute ou modifie
+un événement commun, résumé de la journée à 7h. Sur iPhone, l'app doit d'abord être installée sur l'écran d'accueil.
+
+L'envoi est fait par [`notifier/notify.js`](notifier/notify.js), lancé toutes les 10 minutes par GitHub Actions
+([`.github/workflows/notifications.yml`](.github/workflows/notifications.yml)), en Web Push (VAPID). Secrets du dépôt :
+`FIREBASE_SERVICE_ACCOUNT` (clé JSON d'un compte de service Firebase), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
+La clé publique VAPID figure aussi dans `config.js`.
+
 ### Sécurité
 
 Tout est contrôlé par [`firestore.rules`](firestore.rules). Les clés de `config.js` ne sont pas secrètes.

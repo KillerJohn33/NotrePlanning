@@ -828,6 +828,7 @@
 
   async function openSettings() {
     try { await loadProfiles(); } catch (err) { toastError(err); }
+    await refreshPushSub();
     renderSettings();
     if (!setDlg.open) setDlg.showModal();
   }
@@ -871,6 +872,7 @@
             `<button type="button" data-theme-choice="${value}" aria-pressed="${currentTheme() === value}">${ic(icon)}${label}</button>`).join('')}
         </div>
       </section>
+      ${notifSection()}
       <section class="set-section"><h3>Planning partagé</h3>${share}</section>
       <section class="set-section">
         <h3>Types d’horaires</h3>
@@ -908,6 +910,83 @@
   function setTheme(pref) {
     try { localStorage.setItem(THEME_KEY, pref); } catch { /* ignoré */ }
     window.applyTheme(pref);
+  }
+
+  /* Notifications : abonnement Web Push de l'appareil + préférences dans le profil.
+     L'envoi est fait toutes les 10 min par la tâche GitHub Actions (notifier/notify.js). */
+  const DEFAULT_NOTIF = { reminders: true, reminderMin: 30, partner: true, morning: true };
+  const notifPrefs = () => ({ ...DEFAULT_NOTIF, ...(state.me?.notif || {}) });
+  const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  let pushSub = null;
+
+  async function refreshPushSub() {
+    pushSub = null;
+    if (store.mode === 'demo' || !pushSupported()) return;
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      pushSub = reg ? await reg.pushManager.getSubscription() : null;
+    } catch { /* service worker indisponible */ }
+  }
+  const b64ToBytes = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4)), c => c.charCodeAt(0));
+  // Identifiant stable d'un abonnement : empreinte de son adresse d'envoi.
+  async function subIdOf(sub) {
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sub.endpoint));
+    return [...new Uint8Array(hash)].slice(0, 16).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  async function enablePush() {
+    // requestPermission doit partir directement du geste de l'utilisateur (exigence d'iOS).
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      throw new Error('Notifications refusées. Autorise-les pour cette app dans les réglages du téléphone.');
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true, applicationServerKey: b64ToBytes(window.PLANNING_CONFIG.vapidPublicKey),
+    });
+    await store.savePushSub(await subIdOf(sub), sub.toJSON(), navigator.userAgent.slice(0, 200));
+    if (!state.me?.notif) await store.updateMe({ notif: DEFAULT_NOTIF });
+    pushSub = sub;
+  }
+  async function disablePush() {
+    if (!pushSub) return;
+    await store.deletePushSub(await subIdOf(pushSub));
+    await pushSub.unsubscribe().catch(() => {});
+    pushSub = null;
+  }
+  async function testPush() {
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification('Notre Planning', { body: 'Les notifications fonctionnent sur cet appareil ✓', icon: 'icon-192.png' });
+  }
+
+  function notifSection() {
+    let body;
+    if (store.mode === 'demo') {
+      body = '<p class="muted">Disponibles avec un compte (pas en mode démo).</p>';
+    } else if (!pushSupported()) {
+      body = /iphone|ipad|ipod/i.test(navigator.userAgent) && !isInstalled()
+        ? '<p class="muted">Sur iPhone, installe d’abord l’app sur l’écran d’accueil, puis ouvre-la depuis son icône pour activer les notifications.</p>'
+        : '<p class="muted">Ce navigateur ne permet pas les notifications.</p>';
+    } else {
+      const p = notifPrefs();
+      const partner = state.partner?.display_name || 'l’autre personne';
+      const device = pushSub
+        ? `<p class="notif-on">${ic('bell')} Activées sur cet appareil</p>
+           <div class="btn-row"><button class="btn" data-act="push-test">Tester</button><button class="btn danger" data-act="push-off">Désactiver ici</button></div>`
+        : `<div><button class="btn primary" data-act="push-on">${ic('bell')} Activer sur cet appareil</button></div>`;
+      body = `${device}
+        <form id="notifForm" class="notif-form">
+          <p class="muted">Ce que je veux recevoir :</p>
+          <label class="check"><input type="checkbox" name="reminders" ${p.reminders ? 'checked' : ''}> Rappel avant mes rendez-vous perso et communs</label>
+          <label class="field notif-delay">Prévenir
+            <select name="reminderMin">${[[15, '15 min avant'], [30, '30 min avant'], [60, '1 h avant']]
+              .map(([v, l]) => `<option value="${v}"${Number(p.reminderMin) === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
+          </label>
+          <label class="check"><input type="checkbox" name="partner" ${p.partner ? 'checked' : ''}> Quand ${esc(partner)} ajoute ou modifie un événement commun</label>
+          <label class="check"><input type="checkbox" name="morning" ${p.morning ? 'checked' : ''}> Résumé de ma journée à 7h</label>
+          <div><button class="btn primary">Enregistrer mes choix</button></div>
+        </form>`;
+    }
+    return `<section class="set-section"><h3>Notifications</h3>${body}</section>`;
   }
 
   // Installation sur l'écran d'accueil : bouton natif sur Android / Chrome, mode d'emploi sur iPhone.
@@ -1012,6 +1091,14 @@
       } else if (act === 'remote') {
         setDlg.close();
         return openWork('remote');
+      } else if (act === 'push-on') {
+        await enablePush();
+        toast('Notifications activées sur cet appareil');
+      } else if (act === 'push-off') {
+        await disablePush();
+        toast('Notifications désactivées sur cet appareil');
+      } else if (act === 'push-test') {
+        return testPush();
       } else if (act === 'install') {
         if (!installPrompt) return;
         installPrompt.prompt();
@@ -1042,6 +1129,16 @@
       });
     } else if (form.id === 'shiftForm') {
       await saveShiftTypes(form);
+    } else if (form.id === 'notifForm') {
+      const f = form.elements;
+      await withBusy($('button:not([type])', form), async () => {
+        await store.updateMe({ notif: {
+          reminders: f.reminders.checked, reminderMin: Number(f.reminderMin.value),
+          partner: f.partner.checked, morning: f.morning.checked,
+        } });
+        await loadProfiles();
+        toast('Préférences de notifications enregistrées');
+      });
     } else if (form.id === 'joinForm') {
       await withBusy($('button', form), async () => {
         await store.joinHousehold(form.elements.code.value);

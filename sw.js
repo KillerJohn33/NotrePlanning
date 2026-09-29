@@ -1,5 +1,5 @@
 /* Cache de l'interface uniquement : les données passent toujours par le réseau. */
-const CACHE = 'notre-planning-v18';
+const CACHE = 'notre-planning-v19';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'store.js', 'import.js', 'config.js', 'icon.svg', 'apple-touch-icon.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', event => {
@@ -22,4 +22,28 @@ self.addEventListener('fetch', event => {
       })
       .catch(() => caches.match(req).then(hit => hit || caches.match('index.html')))
   );
+});
+
+// Notifications envoyées par la tâche GitHub Actions (notifier/notify.js) : { title, body, tag, url }.
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data?.text() }; }
+  event.waitUntil(self.registration.showNotification(data.title || 'Notre Planning', {
+    body: data.body || '',
+    icon: 'icon-192.png',
+    badge: 'icon-192.png',
+    tag: data.tag,
+    data: { url: data.url || './' },
+  }));
+});
+
+// Toucher une notification ouvre l'app (ou la ramène au premier plan).
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const open = windows.find(w => 'focus' in w);
+    if (open) return open.focus();
+    return self.clients.openWindow(event.notification.data?.url || './');
+  })());
 });

@@ -233,7 +233,7 @@
           ...row,
           import_key: existing ? existing.import_key ?? null : row.import_key,
           owner_id: existing ? existing.owner_id : uid,
-          updated_at: FieldValue.serverTimestamp(),
+          updated_at: FieldValue.serverTimestamp(), updated_by: uid,
         };
         const batch = db.batch();
         if (row.is_private) {
@@ -257,6 +257,11 @@
         return { me: new Set(myRemote), partner: new Set(isMutual() ? partnerRemote : []) };
       },
       async setRemoteDays(dates) { await remoteRef(uid).set({ dates }); },
+      // Abonnement aux notifications de cet appareil (lu par la tâche d'envoi GitHub Actions).
+      async savePushSub(id, subscription, ua) {
+        await db.collection('pushSubs').doc(id).set({ owner_id: uid, subscription, ua, created_at: FieldValue.serverTimestamp() });
+      },
+      async deletePushSub(id) { await db.collection('pushSubs').doc(id).delete().catch(() => {}); },
       countImported(key, from, to) {
         const [a, b] = [from.toISOString(), to.toISOString()];
         return [...myEvents.values()].filter(e => e.import_key === key && e.start_at >= a && e.start_at < b).length;
@@ -266,7 +271,7 @@
         const ops = [
           ...deleteIds.filter(id => myEvents.has(id)).map(id => batch => batch.delete(db.collection('events').doc(id))),
           ...events.map(ev => batch => batch.set(db.collection('events').doc(), {
-            ...pick(ev), owner_id: uid, updated_at: FieldValue.serverTimestamp(),
+            ...pick(ev), owner_id: uid, updated_at: FieldValue.serverTimestamp(), updated_by: uid,
           })),
         ];
         for (let i = 0; i < ops.length; i += 400) {
@@ -282,7 +287,7 @@
         const ops = [
           ...stale.map(e => batch => batch.delete(db.collection('events').doc(e.id))),
           ...events.map(ev => batch => batch.set(db.collection('events').doc(), {
-            ...pick(ev), import_key: key, owner_id: uid, updated_at: FieldValue.serverTimestamp(),
+            ...pick(ev), import_key: key, owner_id: uid, updated_at: FieldValue.serverTimestamp(), updated_by: uid,
           })),
         ];
         for (let i = 0; i < ops.length; i += 400) {
