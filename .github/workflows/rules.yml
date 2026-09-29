@@ -1,0 +1,27 @@
+# Publie automatiquement les règles de sécurité Firestore (firestore.rules) :
+# plus besoin de les recopier à la main dans la console Firebase.
+name: Règles Firestore
+
+on:
+  push:
+    branches: [main]
+    paths: [firestore.rules]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Installer les dépendances
+        working-directory: notifier
+        run: npm install --no-audit --no-fund --omit=dev
+      - name: Publier les règles si elles ont changé
+        working-directory: notifier
+        run: node deploy-rules.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
