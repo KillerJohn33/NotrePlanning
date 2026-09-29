@@ -81,9 +81,10 @@ async function main() {
     return p && p.partner_id === u.id ? p : null;
   };
 
-  // Événements utiles : ceux qui commencent entre hier et demain, plus tous les répétés.
+  // Événements utiles : ceux qui commencent entre hier et les 9 prochains jours (rappels jusqu'à
+  // une semaine avant), plus tous les répétés.
   const today = startOfDay(now);
-  const horizon = addDays(today, 2);
+  const horizon = addDays(today, 9);
   const events = new Map();
   const [near, repeated] = await Promise.all([
     db.collection('events').where('start_at', '>=', addDays(today, -1).toISOString()).where('start_at', '<', horizon.toISOString()).get(),
@@ -103,22 +104,36 @@ async function main() {
   const outbox = [];
   const occ = [...events.values()].flatMap(ev => occurrences(ev, addDays(today, -1), horizon));
 
-  // 1. Rappels avant les rendez-vous perso et communs (pas les créneaux de travail).
+  // 1. Rappels. Un rappel choisi sur l'événement (reminder, en minutes ; -1 = aucun) s'applique à
+  //    tous les types, y compris Pro et « journée » (envoyé à 9h). Sinon, rappel général des
+  //    préférences, pour les rendez-vous perso et communs avec horaires.
+  const leadLabel = min => (min === 0 ? 'maintenant' : min < 60 ? `dans ${min} min` : min < 1440 ? `dans ${Math.round(min / 60)} h`
+    : min === 1440 ? 'demain' : `dans ${Math.round(min / 1440)} jours`);
   for (const u of users.values()) {
-    if (!wants(u, 'reminders')) continue;
-    const lead = (Number(u.notif.reminderMin) || 30) * 60e3;
+    if (!subs.has(u.id)) continue;
     const partner = partnerOf(u);
     for (const o of occ) {
       const ev = o.ev;
-      if (ev.all_day || ev.category === 'pro') continue;
       const concerns = ev.owner_id === u.id || (ev.category === 'commun' && partner && ev.owner_id === partner.id);
       if (!concerns) continue;
-      const at = o.start.getTime() - lead;
+      let min;
+      if (Number.isInteger(ev.reminder)) {
+        if (ev.reminder < 0) continue;
+        min = ev.reminder;
+      } else {
+        if (!wants(u, 'reminders') || ev.all_day || ev.category === 'pro') continue;
+        min = Number(u.notif.reminderMin) || 30;
+      }
+      // « Journée » : rappel à 9h le jour même, la veille, etc.
+      const at = o.start.getTime() - min * 60e3 + (ev.all_day ? 9 * 3600e3 : 0);
       if (at <= last.getTime() || at > now.getTime()) continue;
+      const when = ev.all_day
+        ? (min === 0 ? 'Aujourd’hui' : `Le ${fmtDay(o.start)}`)
+        : `À ${fmtTime(o.start)}${min >= 1440 ? `, le ${fmtDay(o.start)}` : ''}`;
       outbox.push({
         uid: u.id,
         title: titleOf(ev),
-        body: `À ${fmtTime(o.start)}${ev.location && !ev.is_private ? ` · ${ev.location}` : ''} (dans ${Math.round(lead / 60e3)} min)`,
+        body: `${when}${ev.location && !ev.is_private ? ` · ${ev.location}` : ''}${ev.all_day ? '' : ` (${leadLabel(min)})`}`,
         tag: `rappel-${ev.id}-${o.start.getTime()}`,
       });
     }

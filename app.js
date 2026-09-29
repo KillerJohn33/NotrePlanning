@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v31';
+  const APP_VERSION = 'v32';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -829,10 +829,28 @@
       <p class="ev-view-when">${ic('clock')} ${when}</p>
       <div class="ag-meta">${eventTags(ev, start).join('')}</div>
       ${ev.location ? `<p class="ev-view-line">${ic('pin')} ${esc(ev.location)}</p>` : ''}
+      ${reminderLabel(ev) ? `<p class="ev-view-line">${ic('bell')} Rappel : ${reminderLabel(ev).toLowerCase()}</p>` : ''}
       ${ev.notes ? `<p class="ev-view-notes">${esc(ev.notes)}</p>` : ''}
       ${ev.is_mine ? '' : `<p class="owner-note">${isMasked(ev) ? `Créneau privé de ${esc(nameOf(ev))}.`
         : `Ajouté par ${esc(nameOf(ev))}${canEdit(ev) ? '' : ' (lecture seule)'}.`}</p>`}`;
     $('#evViewEdit').hidden = !canEdit(ev);
+    $('#evViewCopy').hidden = isMasked(ev); // un créneau privé de l'autre n'a rien à recopier
+  }
+
+  // Dupliquer : le formulaire s'ouvre pré-rempli (date de l'occurrence choisie), sans répétition.
+  function duplicateEvent() {
+    const { ev, occ } = viewing;
+    const start = occ || new Date(ev.start_at);
+    const end = new Date(start.getTime() + (new Date(ev.end_at) - new Date(ev.start_at)));
+    evViewDlg.close();
+    fillEventForm({
+      id: null, title: ev.title, category: ev.category, all_day: !!ev.all_day,
+      start_at: start.toISOString(), end_at: end.toISOString(),
+      location: ev.location || '', notes: ev.notes || '', color: ev.color || null, reminder: ev.reminder ?? null,
+      is_private: ev.is_mine ? !!ev.is_private : false, recurrence: 'none', recurrence_until: null, is_mine: true,
+    });
+    $('#evDlgTitle').textContent = 'Dupliquer l’événement';
+    $('#evPresets').hidden = true;
   }
 
   function newEvent(start) {
@@ -930,6 +948,7 @@
     F.recurrence.closest('.row').hidden = false;
     setScope(editingOcc ? 'one' : 'all');
     syncEventForm();
+    renderReminderOptions(ev.reminder);
     evDlg.showModal();
     // Sur téléphone, pas de clavier d'emblée : on laisse voir les suggestions.
     if (!ev.id && !narrowMq.matches) F.title.focus();
@@ -1132,6 +1151,25 @@
     F.is_private.disabled = commun;
     $('#untilRow').hidden = F.recurrence.value === 'none';
     renderEventColors(); // « Auto » suit le type choisi
+    renderReminderOptions(F.reminder.value);
+  }
+
+  // Rappel propre à un événement, en minutes avant le début (-1 = aucun, '' = réglage général).
+  // Pour un événement « toute la journée », le rappel part à 9h (le jour même, la veille…).
+  const REMINDERS_TIMED = [['', 'Par défaut (réglages des notifications)'], ['-1', 'Aucun'], ['0', 'À l’heure du début'],
+    ['10', '10 min avant'], ['30', '30 min avant'], ['60', '1 h avant'], ['120', '2 h avant'],
+    ['1440', '1 jour avant'], ['2880', '2 jours avant'], ['10080', '1 semaine avant']];
+  const REMINDERS_ALLDAY = [['', 'Aucun'], ['0', 'Le jour même à 9h'], ['1440', 'La veille à 9h'],
+    ['2880', '2 jours avant à 9h'], ['10080', '1 semaine avant à 9h']];
+  function renderReminderOptions(selected) {
+    const opts = F.all_day.checked ? REMINDERS_ALLDAY : REMINDERS_TIMED;
+    F.reminder.innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+    F.reminder.value = opts.some(([v]) => v === String(selected ?? '')) ? String(selected ?? '') : '';
+  }
+  function reminderLabel(ev) {
+    if (ev.reminder == null || ev.reminder < 0) return '';
+    const opts = ev.all_day ? REMINDERS_ALLDAY : REMINDERS_TIMED;
+    return opts.find(([v]) => v === String(ev.reminder))?.[1] || '';
   }
 
   // Déplacer le début décale la fin pour garder la même durée.
@@ -1167,6 +1205,7 @@
       notes: F.notes.value.trim() || null,
       is_private: F.category.value !== 'commun' && F.is_private.checked,
       color: formColor,
+      reminder: F.reminder.value === '' ? null : Number(F.reminder.value),
       recurrence,
       recurrence_until: recurrence !== 'none' && F.recurrence_until.value ? F.recurrence_until.value : null,
     };
@@ -2206,6 +2245,7 @@
       evViewDlg.close();
       fillEventForm(viewing.ev, viewing.occ);
     };
+    $('#evViewCopy').onclick = duplicateEvent;
 
     for (const dlg of [evDlg, setDlg, impDlg, rmDlg, dayDlg, searchDlg, evViewDlg]) {
       dlg.addEventListener('click', e => {

@@ -85,7 +85,9 @@ service cloud.firestore {
     function validEvent(d) {
       return d.keys().hasOnly(['owner_id', 'title', 'notes', 'location', 'start_at', 'end_at', 'all_day',
                                'category', 'is_private', 'recurrence', 'recurrence_until', 'import_key',
-                               'updated_at', 'updated_by', 'exdates', 'color'])
+                               'updated_at', 'updated_by', 'exdates', 'color', 'reminder'])
+        // Rappel propre à l'événement : minutes avant le début (-1 = aucun, absent = réglage général).
+        && (d.get('reminder', null) == null || (d.reminder is int && d.reminder >= -1 && d.reminder <= 20160))
         // Couleur propre à l'événement (sinon celle de son type).
         && (d.get('color', null) == null || (d.color is string && d.color.matches('^#[0-9a-fA-F]{6}$')))
         // Dates retirées d'une série répétée (« modifier / supprimer cette date seulement »).
