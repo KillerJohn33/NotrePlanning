@@ -355,6 +355,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 .mo-ev:hover { background: var(--surface-2); }
 .mo-ev i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex: none; }
+.mo-ev > .i { width: 11px; height: 11px; flex: none; color: var(--c); stroke-width: 2.3; }
 .mo-ev span { overflow: hidden; text-overflow: ellipsis; }
 .mo-ev b { font-weight: 600; color: var(--muted); }
 .mo-more { font-size: 11px; color: var(--muted); padding-left: 4px; }
@@ -587,6 +588,11 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .pm { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; line-height: 1; vertical-align: middle; color: var(--perm); }
 .pm .i { width: 14px; height: 14px; stroke-width: 2.3; }
 .pm .dot { width: 6px; height: 6px; }
+
+/* Anniversaires : gâteau sur la journée (pas d'horaire) */
+.bd { display: inline-flex; align-items: center; line-height: 1; vertical-align: middle; color: #e0527a; }
+.bd .i { width: 14px; height: 14px; stroke-width: 2.3; }
+.ag-time .bd .i { width: 18px; height: 18px; }
 .perm-tag { font-size: 12px; font-weight: 600; color: var(--perm); background: color-mix(in srgb, var(--perm) 15%, var(--surface-2)); }
 .perm-tag .dot { width: 6px; height: 6px; }
 .i.i-perm { color: var(--perm); stroke-width: 2.4; }

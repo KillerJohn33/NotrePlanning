@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v33';
+  const APP_VERSION = 'v34';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -229,6 +229,13 @@
   const dayRemoteNote = (d, items) => (items.some(o => isRemoteWork(o.ev, o.start)) ? '' : remoteBadge(d, true));
   // Congés : événement « journée » intitulé Congés… ou Vacances…
   const isOff = ev => ev.all_day && /^(cong|vacances)/.test(normTitle(ev.title));
+  // Anniversaire : événement « journée » répété chaque année, sans horaire.
+  const isBirthday = ev => ev.all_day && ev.recurrence === 'yearly' && normTitle(ev.title).startsWith('anniversaire');
+  function birthdayBadge(date, occ) {
+    const dEnd = addDays(date, 1);
+    const names = occ.filter(o => isBirthday(o.ev) && o.start < dEnd && o.end > date).map(o => o.ev.title);
+    return names.length ? `<span class="bd" title="${esc(names.join(' · '))}" aria-label="${esc(names.join(' · '))}">${ic('cake')}</span>` : '';
+  }
 
   // Jours fériés français (fêtes fixes + fêtes calculées depuis Pâques), mis en cache par année.
   function easterSunday(y) {
@@ -553,7 +560,7 @@
       const hol = holidayName(d);
       const school = schoolHolidayOf(d);
       html += `<button class="wk-day ${sameDay(d, now) ? 'is-today' : ''} ${hol ? 'is-holiday' : ''} ${school ? 'is-school' : ''}" data-goto="${toDateInput(d)}" title="${esc(hol || (school && `${school.name} (zone ${schoolZone})`) || 'Détail du jour')}">
-        <span>${fmt(d, { weekday: 'short' })} ${remoteBadge(d)}${permBadge(d, occ)}</span><strong>${d.getDate()}</strong>${hol ? `<em class="hol">${esc(hol)}</em>` : ''}</button>`;
+        <span>${fmt(d, { weekday: 'short' })} ${remoteBadge(d)}${permBadge(d, occ)}${birthdayBadge(d, occ)}</span><strong>${d.getDate()}</strong>${hol ? `<em class="hol">${esc(hol)}</em>` : ''}</button>`;
     }
     html += '</div>';
     if (split) {
@@ -697,10 +704,10 @@
         const school = schoolHolidayOf(d);
         const tip = [hol, school && `${school.name} (zone ${schoolZone})`].filter(Boolean).join(' · ');
         html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? `is-off${offClass(off)}` : ''} ${hol ? 'is-holiday' : ''} ${school ? 'is-school' : ''}" data-goto="${toDateInput(d)}"${tip ? ` title="${esc(tip)}"` : ''}>
-          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, kindOn(addDays(d, -1)), kindOn(addDays(d, 1)), d, day === nDays, offTitle)}<div class="mo-events">`;
+          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}${birthdayBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, kindOn(addDays(d, -1)), kindOn(addDays(d, 1)), d, day === nDays, offTitle)}<div class="mo-events">`;
         for (const o of items.slice(0, max)) {
           const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
-          html += `<button class="mo-ev" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}"><i></i><span>${time}${esc(o.ev.title)}</span></button>`;
+          html += `<button class="mo-ev" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${isBirthday(o.ev) ? ic('cake') : '<i></i>'}<span>${time}${esc(o.ev.title)}</span></button>`;
         }
         html += `</div>${items.length > max ? `<span class="mo-more">+${items.length - max} autre${items.length - max > 1 ? 's' : ''}</span>` : ''}</div>`;
       }
@@ -766,7 +773,9 @@
 
   function agendaItem(o, d, dEnd) {
     const ev = o.ev;
-    const time = ev.all_day
+    const time = isBirthday(ev)
+      ? `<span class="bd" aria-label="Anniversaire">${ic('cake')}</span>`
+      : ev.all_day
       ? 'Journée'
       : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
     const tags = eventTags(ev, o.start);
@@ -784,6 +793,7 @@
   let editingOcc = null;   // date de l'occurrence cliquée (événements répétés)
   let editScope = 'all';
   let formStart = null;
+  let formBirthday = false; // anniversaire : une date, sans horaire ni fin
   let formColor = null;    // couleur propre à l'événement (null = couleur de son type)
 
   // Pastilles de couleur du formulaire : « Auto » (couleur du type) + palette ; les couleurs
@@ -820,7 +830,7 @@
     let when;
     if (ev.all_day) {
       const last = addDays(end, -1);
-      when = sameDay(start, last) ? `${day(start)} · toute la journée` : `Du ${day(start)} au ${day(last)}`;
+      when = sameDay(start, last) ? `${day(start)} · ${isBirthday(ev) ? 'anniversaire' : 'toute la journée'}` : `Du ${day(start)} au ${day(last)}`;
     } else if (sameDay(start, end) || end.getTime() === addDays(startOfDay(start), 1).getTime()) {
       when = `${day(start)} · ${fmtTime(start)} – ${fmtTime(end)}`;
     } else {
@@ -911,7 +921,7 @@
     editing = ev;
     F.title.placeholder = 'Titre';
     const repeated = !!(ev.id && ev.recurrence && ev.recurrence !== 'none');
-    editingOcc = repeated ? occ : null;
+    editingOcc = repeated && !isBirthday(ev) ? occ : null;
     const readOnly = !canEdit(ev);
     const s = new Date(ev.start_at);
     const e = new Date(ev.end_at);
@@ -929,6 +939,7 @@
     F.notes.value = ev.notes || '';
     F.is_private.checked = !!ev.is_private;
     formColor = ev.color || null;
+    formBirthday = isBirthday(ev);
     formStart = s;
 
     $('#evDlgTitle').textContent = !ev.id ? 'Nouvel événement' : readOnly ? 'Détails' : 'Modifier l’événement';
@@ -947,7 +958,6 @@
     renderPresets(!ev.id);
     // Série ouverte depuis une date : on propose « cette date seulement » par défaut.
     $('#evScope').hidden = !(editingOcc && !readOnly);
-    F.recurrence.closest('.row').hidden = false;
     setScope(editingOcc ? 'one' : 'all');
     syncEventForm();
     renderReminderOptions(ev.reminder);
@@ -1132,6 +1142,7 @@
     if (p.yearly) setTimeout(() => { F.title.focus(); F.title.setSelectionRange(99, 99); }, 0);
     F.category.value = p.cat;
     F.all_day.checked = !!p.allDay;
+    formBirthday = !!p.yearly;
     const start = fromInputs(F.start_date.value, F.start_time.value || '09:00');
     if (p.allDay) {
       F.end_date.value = F.start_date.value;
@@ -1145,13 +1156,19 @@
   }
 
   function syncEventForm() {
+    // Anniversaire : juste une date, toujours « journée » et répétée chaque année.
+    if (formBirthday) { F.all_day.checked = true; F.recurrence.value = 'yearly'; }
+    $('#allDayRow').hidden = $('#endRow').hidden = formBirthday;
+    $('#recurRow').hidden = formBirthday || (editScope === 'one' && !!editingOcc);
+    $('#startLabel').textContent = formBirthday ? 'Date' : 'Début';
+    F.end_date.required = !formBirthday;
     const allDay = F.all_day.checked;
     $$('.time-field', evForm).forEach(el => { el.hidden = allDay; });
     F.start_time.required = F.end_time.required = !allDay;
     const commun = F.category.value === 'commun';
     if (commun) F.is_private.checked = false;
     F.is_private.disabled = commun;
-    $('#untilRow').hidden = F.recurrence.value === 'none';
+    $('#untilRow').hidden = formBirthday || F.recurrence.value === 'none';
     renderEventColors(); // « Auto » suit le type choisi
     renderReminderOptions(F.reminder.value);
   }
@@ -1191,11 +1208,12 @@
     e.preventDefault();
     const allDay = F.all_day.checked;
     const start = allDay ? fromInputs(F.start_date.value) : fromInputs(F.start_date.value, F.start_time.value);
-    const end = allDay ? addDays(fromInputs(F.end_date.value), 1) : fromInputs(F.end_date.value, F.end_time.value);
+    const end = formBirthday ? addDays(start, 1)
+      : allDay ? addDays(fromInputs(F.end_date.value), 1) : fromInputs(F.end_date.value, F.end_time.value);
     if (!(end > start)) return toast('La fin doit être après le début.');
     const title = F.title.value.trim();
     if (!title) return toast('Donne un titre à l’événement.');
-    const recurrence = F.recurrence.value;
+    const recurrence = formBirthday ? 'yearly' : F.recurrence.value;
     const ev = {
       id: editing.id,
       title,
@@ -1209,7 +1227,7 @@
       color: formColor,
       reminder: F.reminder.value === '' ? null : Number(F.reminder.value),
       recurrence,
-      recurrence_until: recurrence !== 'none' && F.recurrence_until.value ? F.recurrence_until.value : null,
+      recurrence_until: !formBirthday && recurrence !== 'none' && F.recurrence_until.value ? F.recurrence_until.value : null,
     };
     await withBusy($('#evSave'), async () => {
       if (onlyThisDate()) {
@@ -1257,7 +1275,7 @@
     F.end_date.value = toDateInput(editing.all_day ? addDays(e, -1) : e);
     F.end_time.value = toTimeInput(e);
     formStart = s;
-    F.recurrence.closest('.row').hidden = !!one;
+    $('#recurRow').hidden = !!one || formBirthday;
     $('#evSeriesNote').hidden = !!one || !(editing.id && editing.recurrence !== 'none');
   }
 
