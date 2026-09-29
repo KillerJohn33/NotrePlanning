@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v32';
+  const APP_VERSION = 'v33';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -37,7 +37,8 @@
   const presetIcon = title => PRESETS.find(p => normTitle(title).startsWith(normTitle(p.title)))?.icon;
   const RECUR_LABEL = { daily: 'Tous les jours', weekdays: 'Lun–ven', weekly: 'Chaque semaine', monthly: 'Chaque mois', yearly: 'Chaque année' };
   const HOUR_PX = 48;
-  const COLORS = ['#3b82f6', '#0ea5e9', '#10b981', '#84cc16', '#f59e0b', '#e8590c', '#ef4444', '#ec4899', '#9b5de5', '#64748b'];
+  const COLORS = ['#3b82f6', '#0ea5e9', '#10b981', '#84cc16', '#f59e0b', '#e8590c', '#ef4444', '#ec4899', '#9b5de5', '#64748b',
+    '#1e40af', '#06b6d4', '#f472b6', '#c026d3', '#a16207', '#881337'];
 
   /* Dates ------------------------------------------------------------------- */
   const pad = n => String(n).padStart(2, '0');
@@ -125,6 +126,7 @@
     ['#475569', 'Ardoise'], ['#6366f1', 'Indigo'], ['#0ea5e9', 'Ciel'], ['#14b8a6', 'Turquoise'],
     ['#16a34a', 'Vert'], ['#84cc16', 'Anis'], ['#d97706', 'Ambre'], ['#f97316', 'Orange'],
     ['#dc2626', 'Rouge'], ['#db2777', 'Framboise'], ['#9333ea', 'Violet'], ['#92400e', 'Brun'],
+    ['#1e3a8a', 'Marine'], ['#0e7490', 'Pétrole'], ['#4d7c0f', 'Olive'], ['#ca8a04', 'Moutarde'], ['#c026d3', 'Fuchsia'], ['#78716c', 'Taupe'],
   ];
   const DEFAULT_EVENT_COLORS = { pro: '#475569', perso: '#16a34a', commun: '#9333ea' };
   function hexToHsl(hex) {
