@@ -6,7 +6,7 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   // Icône du jeu SVG défini en tête de index.html (#i-<nom>).
-  const ic = name => `<svg class="i" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+  const ic = (name, cls = '') => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   const CATS = {
@@ -121,20 +121,47 @@
   // Un créneau pro d'un jour de télétravail prend l'icône ordinateur au lieu de la mallette.
   const isRemoteWork = (ev, start) => ev.category === 'pro' && !ev.all_day
     && state.remote[personOf(ev)].has(toDateInput(start));
-  const iconOf = (ev, start) => ic(isRemoteWork(ev, start) ? 'laptop' : CATS[ev.category].icon);
+
+  // Permanence : créneau pro intitulé « Permanence… » (import Excel ou saisie manuelle).
+  const isPerm = ev => ev.category === 'pro' && /^perm/i.test(ev.title || '');
+  function permBadge(date, occ, withLabel = false) {
+    const dEnd = addDays(date, 1);
+    const who = new Set(occ.filter(o => isPerm(o.ev) && o.start < dEnd && o.end > date).map(o => personOf(o.ev)));
+    if (!who.size) return '';
+    const people = [...who].map(p => (p === 'me'
+      ? { name: 'Moi', color: state.me?.color }
+      : { name: state.partner?.display_name, color: state.partner?.color }));
+    const title = `Permanence : ${people.map(p => p.name).join(', ')}`;
+    const dots = state.partner ? people.map(p => `<i class="dot" style="--c:${esc(p.color)}"></i>`).join('') : '';
+    return withLabel
+      ? `<span class="tag perm-tag" title="${esc(title)}">${ic('bell')} Permanence ${dots}</span>`
+      : `<span class="pm" title="${esc(title)}" aria-label="${esc(title)}">${ic('bell')}${dots}</span>`;
+  }
+  const iconOf = (ev, start) => (isPerm(ev) ? ic('bell', 'i-perm')
+    : ic(isRemoteWork(ev, start) ? 'laptop' : CATS[ev.category].icon));
 
   function getRange() {
     if (state.view === 'week') {
-      const days = narrowMq.matches ? 3 : 7;
-      const from = days === 7 ? startOfWeek(state.cursor) : startOfDay(state.cursor);
-      return { from, to: addDays(from, days), days };
+      // Toujours la semaine complète ; sur téléphone elle défile horizontalement.
+      const from = startOfWeek(state.cursor);
+      return { from, to: addDays(from, 7), days: 7 };
     }
     if (state.view === 'month') {
-      const from = startOfWeek(new Date(state.cursor.getFullYear(), state.cursor.getMonth(), 1));
-      return { from, to: addDays(from, 42), days: 42 };
+      // Mois empilés verticalement, étendus au fil du défilement.
+      if (!state.monthStart) initMonths(state.cursor);
+      const from = state.monthStart;
+      return { from, to: new Date(from.getFullYear(), from.getMonth() + state.monthCount, 1) };
     }
     const from = startOfDay(state.cursor);
     return { from, to: addDays(from, 14), days: 14 };
+  }
+
+  const monthKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  // Recentre la liste des mois sur `date` (2 mois avant, 12 après) et y fait défiler.
+  function initMonths(date) {
+    state.monthStart = new Date(date.getFullYear(), date.getMonth() - 2, 1);
+    state.monthCount = 15;
+    state.monthScrollTo = monthKey(date);
   }
 
   function visibleOccurrences(from, to, { ignoreFilters = false } = {}) {
@@ -174,16 +201,71 @@
   }
 
   function step(dir) {
-    const c = state.cursor;
-    if (state.view === 'month') state.cursor = new Date(c.getFullYear(), c.getMonth() + dir, 1);
-    else if (state.view === 'week') state.cursor = addDays(c, dir * (narrowMq.matches ? 3 : 7));
-    else state.cursor = addDays(c, dir * 7);
+    if (state.view === 'month') {
+      const v = visibleMonth();
+      return goToMonth(new Date(v.getFullYear(), v.getMonth() + dir, 1));
+    }
+    state.cursor = addDays(state.cursor, dir * 7);
+    state.weekScrollTo = 'start';
+    load();
+  }
+  function goToday() {
+    state.cursor = startOfDay(new Date());
+    if (state.view === 'month') return goToMonth(state.cursor);
+    state.weekScrollTo = 'cursor';
     load();
   }
   function setView(view) {
     state.view = view;
+    if (view === 'month') initMonths(state.cursor);
+    if (view === 'week') state.weekScrollTo = 'cursor';
     saveUi();
     load();
+  }
+
+  // Vue mois : mois actuellement en haut de l'écran, et défilement fluide vers un mois.
+  function visibleMonth() {
+    const main = $('#main');
+    const top = main.scrollTop + ($('.mo-head', main)?.offsetHeight || 0) + 8;
+    let current = null;
+    for (const sec of $$('.mo-month', main)) {
+      if (sec.offsetTop <= top) current = sec;
+      else break;
+    }
+    const key = current?.dataset.month;
+    if (!key) return new Date(state.cursor.getFullYear(), state.cursor.getMonth(), 1);
+    const [y, m] = key.split('-').map(Number);
+    return new Date(y, m - 1, 1);
+  }
+  function goToMonth(date) {
+    const main = $('#main');
+    const sec = $(`.mo-month[data-month="${monthKey(date)}"]`, main);
+    if (!sec) {
+      initMonths(date);
+      return load();
+    }
+    main.scrollTo({ top: sec.offsetTop - ($('.mo-head', main)?.offsetHeight || 0), behavior: 'smooth' });
+  }
+  function updateMonthLabel() {
+    $('#period').textContent = cap(fmt(visibleMonth(), { month: 'long', year: 'numeric' }));
+  }
+  // Charge d'autres mois quand on approche du bas (ou du haut) de la liste.
+  let monthExtending = false;
+  function onMonthScroll() {
+    updateMonthLabel();
+    const main = $('#main');
+    if (monthExtending) return;
+    if (main.scrollTop + main.clientHeight > main.scrollHeight - 900) {
+      monthExtending = true;
+      state.monthCount += 6;
+      load().finally(() => { monthExtending = false; });
+    } else if (main.scrollTop < 300) {
+      monthExtending = true;
+      state.monthStart = new Date(state.monthStart.getFullYear(), state.monthStart.getMonth() - 6, 1);
+      state.monthCount += 6;
+      state.monthPrepended = true;
+      load().finally(() => { monthExtending = false; });
+    }
   }
 
   /* Rendu ------------------------------------------------------------------------- */
@@ -201,7 +283,7 @@
     const { from, to } = state.range;
     const last = addDays(to, -1);
     let label;
-    if (state.view === 'month') label = cap(fmt(state.cursor, { month: 'long', year: 'numeric' }));
+    if (state.view === 'month') label = cap(fmt(state.cursor, { month: 'long', year: 'numeric' })); // affiné au défilement
     else if (from.getMonth() === last.getMonth()) label = `${from.getDate()} – ${last.getDate()} ${fmt(last, { month: 'long', year: 'numeric' })}`;
     else {
       const year = last.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {};
@@ -250,22 +332,25 @@
   }
 
   function renderWeek(main) {
-    const prevScroll = $('.wk-scroll', main)?.scrollTop;
+    const prev = $('.wk-scroll', main);
+    const prevTop = prev?.scrollTop;
+    const prevLeft = prev?.scrollLeft;
     const { from, days } = state.range;
     const dates = Array.from({ length: days }, (_, i) => addDays(from, i));
     const split = splitLanes();
     const occ = visibleOccurrences(from, addDays(from, days));
     const now = new Date();
-    const cols = `52px repeat(${days}, minmax(0, 1fr))`;
+    // --day-min : largeur mini d'un jour (3 jours visibles sur téléphone, le reste défile).
+    const cols = `52px repeat(${days}, minmax(var(--day-min), 1fr))`;
 
-    let html = `<div class="wk-scroll"><div class="wk-sticky"><div class="wk-row" style="grid-template-columns:${cols}"><div></div>`;
+    let html = `<div class="wk-scroll"><div class="wk-sticky"><div class="wk-row" style="grid-template-columns:${cols}"><div class="wk-corner"></div>`;
     for (const d of dates) {
       html += `<button class="wk-day ${sameDay(d, now) ? 'is-today' : ''}" data-goto="${toDateInput(d)}" title="Voir l’agenda de ce jour">
-        <span>${fmt(d, { weekday: 'short' })} ${remoteBadge(d)}</span><strong>${d.getDate()}</strong></button>`;
+        <span>${fmt(d, { weekday: 'short' })} ${remoteBadge(d)}${permBadge(d, occ)}</span><strong>${d.getDate()}</strong></button>`;
     }
     html += '</div>';
     if (split) {
-      html += `<div class="wk-row" style="grid-template-columns:${cols}"><div></div>`;
+      html += `<div class="wk-row" style="grid-template-columns:${cols}"><div class="wk-corner"></div>`;
       for (let i = 0; i < days; i++) {
         html += `<div class="lane-legend"><span style="--c:${esc(state.me.color)}" title="Moi"></span><span style="--c:${esc(state.partner.color)}" title="${esc(state.partner.display_name)}"></span></div>`;
       }
@@ -273,7 +358,7 @@
     }
     const allDay = occ.filter(o => o.ev.all_day);
     if (allDay.length) {
-      html += `<div class="wk-row wk-allday" style="grid-template-columns:${cols}"><div class="wk-label">Journée</div>`;
+      html += `<div class="wk-row wk-allday" style="grid-template-columns:${cols}"><div class="wk-label wk-corner">Journée</div>`;
       for (const d of dates) {
         const items = allDay.filter(o => o.start < addDays(d, 1) && o.end > d);
         html += `<div>${items.map(o => `<button class="chip-ev" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${ic(CATS[o.ev.category].icon)} ${esc(o.ev.title)}</button>`).join('')}</div>`;
@@ -320,7 +405,16 @@
     }
     html += '</div></div>';
     main.innerHTML = html;
-    $('.wk-scroll', main).scrollTop = prevScroll ?? 7 * HOUR_PX - 8;
+    const scroller = $('.wk-scroll', main);
+    scroller.scrollTop = prevTop ?? 7 * HOUR_PX - 8;
+    // Horizontal : se placer sur le jour voulu (aujourd'hui, ou lundi après un changement de semaine).
+    if (state.weekScrollTo) {
+      const col = state.weekScrollTo === 'cursor' && $(`.wk-col[data-date="${toDateInput(state.cursor)}"]`, main);
+      scroller.scrollLeft = col ? col.offsetLeft - 52 : 0;
+      state.weekScrollTo = null;
+    } else if (prevLeft) {
+      scroller.scrollLeft = prevLeft;
+    }
   }
 
   function eventBlock(o, g) {
@@ -333,28 +427,60 @@
       title="${esc(tip)}"><span class="ev-title">${iconOf(ev, o.start)} ${esc(ev.title)}</span><span class="ev-time">${time}</span></button>`;
   }
 
+  // Vue mois : les mois s'enchaînent verticalement (défilement continu, chargement au fil de l'eau).
   function renderMonth(main) {
-    const { from } = state.range;
-    const occ = visibleOccurrences(from, addDays(from, 42));
-    const month = state.cursor.getMonth();
+    const { from, to } = state.range;
+    const prevTop = main.scrollTop;
+    const prevHeight = main.scrollHeight;
+    const occ = visibleOccurrences(from, to);
     const today = new Date();
     const max = narrowMq.matches ? 6 : 3;
-    let html = '<div class="month"><div class="mo-head">';
-    html += ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'].map(d => `<div>${d}</div>`).join('');
-    html += '</div><div class="mo-grid">';
-    for (let i = 0; i < 42; i++) {
-      const d = addDays(from, i);
-      const dEnd = addDays(d, 1);
-      const items = occ.filter(o => o.start < dEnd && o.end > d);
-      html += `<div class="mo-cell ${d.getMonth() !== month ? 'is-out' : ''} ${sameDay(d, today) ? 'is-today' : ''}" data-goto="${toDateInput(d)}">
-        <div class="mo-top"><span class="mo-num">${d.getDate()}</span>${remoteBadge(d)}</div><div class="mo-events">`;
-      for (const o of items.slice(0, max)) {
-        const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
-        html += `<button class="mo-ev" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}"><i></i><span>${time}${esc(o.ev.title)}</span></button>`;
+
+    // Occurrences rangées par jour (un événement sur plusieurs jours apparaît chaque jour).
+    const byDay = new Map();
+    for (const o of occ) {
+      for (let d = startOfDay(o.start < from ? from : o.start); d < o.end && d < to; d = addDays(d, 1)) {
+        const k = toDateInput(d);
+        if (!byDay.has(k)) byDay.set(k, []);
+        byDay.get(k).push(o);
       }
-      html += `</div>${items.length > max ? `<span class="mo-more">+${items.length - max} autre${items.length - max > 1 ? 's' : ''}</span>` : ''}</div>`;
     }
-    main.innerHTML = html + '</div></div>';
+
+    let html = '<div class="month"><div class="mo-head">'
+      + ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'].map(d => `<div>${d}</div>`).join('') + '</div>';
+    for (let m = new Date(from); m < to; m = new Date(m.getFullYear(), m.getMonth() + 1, 1)) {
+      const lead = (m.getDay() + 6) % 7;
+      const nDays = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+      html += `<section class="mo-month" data-month="${monthKey(m)}">
+        <h2 class="mo-title">${cap(fmt(m, { month: 'long', year: 'numeric' }))}</h2><div class="mo-grid">`;
+      html += '<div class="mo-cell is-blank"></div>'.repeat(lead);
+      for (let day = 1; day <= nDays; day++) {
+        const d = new Date(m.getFullYear(), m.getMonth(), day);
+        const items = byDay.get(toDateInput(d)) || [];
+        html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''}" data-goto="${toDateInput(d)}">
+          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}</div><div class="mo-events">`;
+        for (const o of items.slice(0, max)) {
+          const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
+          html += `<button class="mo-ev" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}"><i></i><span>${time}${esc(o.ev.title)}</span></button>`;
+        }
+        html += `</div>${items.length > max ? `<span class="mo-more">+${items.length - max} autre${items.length - max > 1 ? 's' : ''}</span>` : ''}</div>`;
+      }
+      html += '</div></section>';
+    }
+    main.innerHTML = html + '</div>';
+
+    if (state.monthScrollTo) {
+      const sec = $(`.mo-month[data-month="${state.monthScrollTo}"]`, main);
+      main.scrollTop = sec ? sec.offsetTop - $('.mo-head', main).offsetHeight : 0;
+      state.monthScrollTo = null;
+    } else if (state.monthPrepended) {
+      // Des mois ont été ajoutés au-dessus : on compense pour que l'affichage ne saute pas.
+      main.scrollTop = prevTop + (main.scrollHeight - prevHeight);
+      state.monthPrepended = false;
+    } else {
+      main.scrollTop = prevTop;
+    }
+    updateMonthLabel();
   }
 
   // Créneaux où personne n'a rien de prévu (les événements "journée" ne bloquent pas).
@@ -390,7 +516,7 @@
         .filter(o => o.start < dEnd && o.end > d)
         .sort((a, b) => (b.ev.all_day - a.ev.all_day) || (a.start - b.start));
       html += `<section class="ag-day"><header class="ag-date"><span class="ag-dow">${fmt(d, { weekday: 'long' })}</span>
-        <span class="ag-dnum">${fmt(d, { day: 'numeric', month: 'long' })}</span>${sameDay(d, today) ? '<span class="badge">Aujourd’hui</span>' : ''}${remoteBadge(d, true)}</header>`;
+        <span class="ag-dnum">${fmt(d, { day: 'numeric', month: 'long' })}</span>${sameDay(d, today) ? '<span class="badge">Aujourd’hui</span>' : ''}${permBadge(d, occ, true)}${remoteBadge(d, true)}</header>`;
       if (items.length) {
         html += '<div class="ag-list">' + items.map(o => agendaItem(o, d, dEnd)).join('') + '</div>';
       } else {
@@ -412,9 +538,11 @@
       : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
     const tags = [];
     if (state.partner) tags.push(ev.category === 'commun' ? `<span class="tag">${ic('users')} Ensemble</span>` : `<span class="tag"><span class="dot" style="--c:${esc(colorOf(ev))}"></span>${esc(nameOf(ev))}</span>`);
-    tags.push(isRemoteWork(ev, o.start)
-      ? `<span class="tag">${ic('laptop')} Télétravail</span>`
-      : `<span class="tag tag-cat" data-cat="${ev.category}">${ic(CATS[ev.category].icon)} ${CATS[ev.category].label}</span>`);
+    const perm = isPerm(ev);
+    const remote = isRemoteWork(ev, o.start);
+    if (perm) tags.push(`<span class="tag perm-tag">${ic('bell')} Permanence</span>`);
+    if (remote) tags.push(`<span class="tag">${ic('laptop')} Télétravail</span>`);
+    if (!perm && !remote) tags.push(`<span class="tag tag-cat" data-cat="${ev.category}">${ic(CATS[ev.category].icon)} ${CATS[ev.category].label}</span>`);
     if (ev.is_private) tags.push(`<span class="tag">${ic('lock')} Privé</span>`);
     if (ev.recurrence && ev.recurrence !== 'none') tags.push(`<span class="tag">${ic('repeat')} ${RECUR_LABEL[ev.recurrence]}</span>`);
     if (ev.location) tags.push(`<span class="tag">${ic('pin')} ${esc(ev.location)}</span>`);
@@ -981,7 +1109,14 @@
   function bindUi() {
     $('#prevBtn').onclick = () => step(-1);
     $('#nextBtn').onclick = () => step(1);
-    $('#todayBtn').onclick = () => { state.cursor = startOfDay(new Date()); load(); };
+    $('#todayBtn').onclick = goToday;
+    // Vue mois : titre à jour et mois supplémentaires chargés pendant le défilement.
+    let monthTick = false;
+    $('#main').addEventListener('scroll', () => {
+      if (state.view !== 'month' || monthTick) return;
+      monthTick = true;
+      requestAnimationFrame(() => { monthTick = false; onMonthScroll(); });
+    }, { passive: true });
     $('#viewSeg').onclick = e => { const b = e.target.closest('[data-view]'); if (b) setView(b.dataset.view); };
     $('#whoSeg').onclick = e => {
       const b = e.target.closest('[data-who]');
@@ -1017,7 +1152,8 @@
       }
     });
 
-    // Balayage horizontal sur mobile pour changer de période.
+    // Balayage horizontal sur mobile pour changer de période (vue agenda seulement :
+    // la semaine défile horizontalement et le mois verticalement).
     let touch = null;
     $('#main').addEventListener('touchstart', e => { const t = e.touches[0]; touch = { x: t.clientX, y: t.clientY }; }, { passive: true });
     $('#main').addEventListener('touchend', e => {
@@ -1026,6 +1162,7 @@
       const dx = t.clientX - touch.x;
       const dy = t.clientY - touch.y;
       touch = null;
+      if (state.view !== 'agenda') return;
       if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
     }, { passive: true });
 
