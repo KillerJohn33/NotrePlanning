@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v24';
+  const APP_VERSION = 'v25';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -118,7 +118,64 @@
 
   const personOf = ev => (ev.is_mine ? 'me' : 'partner');
   const nameOf = ev => (ev.is_mine ? 'Moi' : (state.partner?.display_name || 'Partenaire'));
-  const colorOf = ev => (ev.category === 'commun' ? 'var(--commun)' : (ev.is_mine ? state.me?.color : state.partner?.color) || 'var(--accent)');
+  // Couleur de la personne (liseré, pastilles, colonnes) — distincte de la couleur de l'événement.
+  const personColorOf = ev => (ev.is_mine ? state.me?.color : state.partner?.color) || 'var(--accent)';
+
+  /* Couleurs des événements : par type (Pro, Perso, Commun), personnalisables, ou propres à
+     un événement. Une couleur trop proche de celle d'une personne est interdite. */
+  const EVENT_PALETTE = [
+    ['#475569', 'Ardoise'], ['#6366f1', 'Indigo'], ['#0ea5e9', 'Ciel'], ['#14b8a6', 'Turquoise'],
+    ['#16a34a', 'Vert'], ['#84cc16', 'Anis'], ['#d97706', 'Ambre'], ['#f97316', 'Orange'],
+    ['#dc2626', 'Rouge'], ['#db2777', 'Framboise'], ['#9333ea', 'Violet'], ['#92400e', 'Brun'],
+  ];
+  const DEFAULT_EVENT_COLORS = { pro: '#475569', perso: '#16a34a', commun: '#9333ea' };
+  function hexToHsl(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+    if (max === min) return [0, 0, l];
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h * 60, s, l];
+  }
+  // Deux couleurs se confondent si elles ont presque la même teinte (ou sont deux gris proches).
+  function tooClose(a, b) {
+    if (!/^#[0-9a-f]{6}$/i.test(a || '') || !/^#[0-9a-f]{6}$/i.test(b || '')) return false;
+    const [h1, s1, l1] = hexToHsl(a), [h2, s2, l2] = hexToHsl(b);
+    if (s1 < 0.2 || s2 < 0.2) return s1 < 0.2 && s2 < 0.2 && Math.abs(l1 - l2) < 0.15;
+    const dh = Math.min(Math.abs(h1 - h2), 360 - Math.abs(h1 - h2));
+    return dh < 26 && Math.abs(l1 - l2) < 0.3;
+  }
+  const personColors = () => [state.me?.color, state.partner?.color].filter(Boolean);
+  const clashesWithPerson = c => personColors().some(p => tooClose(c, p));
+  // Couleurs effectives des types : le choix de chacun, sinon la couleur par défaut ; si elle se
+  // confond avec une personne, on bascule sur la première couleur libre de la palette.
+  function eventColors() {
+    const chosen = { ...DEFAULT_EVENT_COLORS, ...(state.me?.event_colors || {}) };
+    const out = {};
+    for (const cat of Object.keys(DEFAULT_EVENT_COLORS)) {
+      let c = chosen[cat];
+      if (clashesWithPerson(c)) {
+        c = EVENT_PALETTE.map(([hex]) => hex)
+          .find(hex => !clashesWithPerson(hex) && !Object.values(out).includes(hex)) || c;
+      }
+      out[cat] = c;
+    }
+    return out;
+  }
+  // Variables CSS des types (filtres, formulaire, étiquettes) mises à jour avec les réglages.
+  function applyEventColorVars() {
+    const colors = eventColors();
+    for (const [cat, c] of Object.entries(colors)) document.documentElement.style.setProperty(`--ev-${cat}`, c);
+  }
+  // Couleur d'un événement : la sienne, sinon celle de son type d'horaire, sinon celle de son type.
+  function colorOf(ev) {
+    if (isMasked(ev)) return eventColors()[ev.category];
+    if (ev.color && !clashesWithPerson(ev.color)) return ev.color;
+    const shift = ev.is_mine && shiftIdOf(ev) && shiftTypes().find(t => t.id === shiftIdOf(ev));
+    return shift?.color || eventColors()[ev.category];
+  }
   const canEdit = ev => ev.is_mine || ev.category === 'commun';
   const isMasked = ev => !ev.is_mine && ev.is_private;
   const splitLanes = () => !!state.partner && state.who === 'both';
@@ -338,6 +395,7 @@
     state.partner = partner;
     state.household = await store.getHousehold();
     state.remote = await store.getRemoteDays();
+    applyEventColorVars();
   }
 
   function step(dir) {
@@ -506,7 +564,7 @@
       html += `<div class="wk-row wk-allday" style="grid-template-columns:${cols}"><div class="wk-label wk-corner">Journée</div>`;
       for (const d of dates) {
         const items = allDay.filter(o => o.start < addDays(d, 1) && o.end > d);
-        html += `<div>${items.map(o => `<button class="chip-ev ${isOff(o.ev) ? 'is-off' : ''}" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${ic(CATS[o.ev.category].icon)} ${esc(o.ev.title)}</button>`).join('')}</div>`;
+        html += `<div>${items.map(o => `<button class="chip-ev ${isOff(o.ev) ? 'is-off' : ''}" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))};--pc:${esc(personColorOf(o.ev))}" title="${esc(o.ev.title)}">${ic(CATS[o.ev.category].icon)} ${esc(o.ev.title)}</button>`).join('')}</div>`;
       }
       html += '</div>';
     }
@@ -569,7 +627,7 @@
     const time = `${fmtTime(o.start)} – ${fmtTime(o.end)}`;
     const tip = `${ev.title} · ${time}${state.partner ? ` · ${nameOf(ev)}` : ''}${ev.location ? ` · ${ev.location}` : ''}`;
     return `<button class="ev ${isMasked(ev) ? 'is-masked' : ''} ${short ? 'is-short' : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}"
-      style="top:${g.top}px;height:${g.height - 2}px;left:calc(${g.left}% + 2px);width:calc(${g.width}% - 4px);--c:${esc(colorOf(ev))}"
+      style="top:${g.top}px;height:${g.height - 2}px;left:calc(${g.left}% + 2px);width:calc(${g.width}% - 4px);--c:${esc(colorOf(ev))};--pc:${esc(personColorOf(ev))}"
       title="${esc(tip)}"><span class="ev-title">${iconOf(ev, o.start)} ${esc(ev.title)}</span><span class="ev-time">${time}</span></button>`;
   }
 
@@ -701,7 +759,7 @@
       ? 'Journée'
       : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
     const tags = [];
-    if (state.partner) tags.push(ev.category === 'commun' ? `<span class="tag">${ic('users')} Ensemble</span>` : `<span class="tag"><span class="dot" style="--c:${esc(colorOf(ev))}"></span>${esc(nameOf(ev))}</span>`);
+    if (state.partner) tags.push(ev.category === 'commun' ? `<span class="tag">${ic('users')} Ensemble</span>` : `<span class="tag"><span class="dot" style="--c:${esc(personColorOf(ev))}"></span>${esc(nameOf(ev))}</span>`);
     const perm = isPerm(ev);
     const remote = isRemoteWork(ev, o.start);
     if (perm) tags.push(`<span class="tag perm-tag">${ic('perm')} Permanence</span>`);
@@ -728,6 +786,19 @@
   let editingOcc = null;   // date de l'occurrence cliquée (événements répétés)
   let editScope = 'all';
   let formStart = null;
+  let formColor = null;    // couleur propre à l'événement (null = couleur de son type)
+
+  // Pastilles de couleur du formulaire : « Auto » (couleur du type) + palette ; les couleurs
+  // trop proches de celle d'une personne sont grisées.
+  function renderEventColors() {
+    const auto = eventColors()[F.category.value];
+    $('#evColors').innerHTML = `<button type="button" class="ev-color auto" data-color-ev="" style="--c:${auto}" aria-pressed="${!formColor}" title="Couleur du type ${CATS[F.category.value].label}">Auto</button>`
+      + EVENT_PALETTE.map(([hex, name]) => {
+        const clash = clashesWithPerson(hex);
+        return `<button type="button" class="ev-color" data-color-ev="${hex}" style="--c:${hex}" aria-pressed="${formColor === hex}"${clash ? ' disabled' : ''}
+          title="${name}${clash ? ' — trop proche de la couleur d’une personne' : ''}" aria-label="${name}"></button>`;
+      }).join('');
+  }
 
   function openEvent(id, occMs) {
     // Hors de la période affichée (résultat de recherche), l'événement vient de la recherche.
@@ -808,6 +879,7 @@
     F.location.value = ev.location || '';
     F.notes.value = ev.notes || '';
     F.is_private.checked = !!ev.is_private;
+    formColor = ev.color || null;
     formStart = s;
 
     $('#evDlgTitle').textContent = !ev.id ? 'Nouvel événement' : readOnly ? 'Détails' : 'Modifier l’événement';
@@ -1034,6 +1106,7 @@
     if (commun) F.is_private.checked = false;
     F.is_private.disabled = commun;
     $('#untilRow').hidden = F.recurrence.value === 'none';
+    renderEventColors(); // « Auto » suit le type choisi
   }
 
   // Déplacer le début décale la fin pour garder la même durée.
@@ -1068,6 +1141,7 @@
       location: F.location.value.trim() || null,
       notes: F.notes.value.trim() || null,
       is_private: F.category.value !== 'commun' && F.is_private.checked,
+      color: formColor,
       recurrence,
       recurrence_until: recurrence !== 'none' && F.recurrence_until.value ? F.recurrence_until.value : null,
     };
@@ -1170,6 +1244,7 @@
             `<button type="button" data-theme-choice="${value}" aria-pressed="${currentTheme() === value}">${ic(icon)}${label}</button>`).join('')}
         </div>
       </section>
+      ${eventColorsSection()}
       <section class="set-section">
         <h3>Vacances scolaires</h3>
         <div class="seg zone-seg" role="group" aria-label="Zone de vacances scolaires">
@@ -1373,6 +1448,27 @@
     });
   }
 
+  // Réglages → couleurs des types d'événements (interdites : proches d'une personne ou déjà prises).
+  function eventColorsSection() {
+    const current = eventColors();
+    const partner = state.partner?.display_name;
+    const rows = Object.keys(DEFAULT_EVENT_COLORS).map(cat => {
+      const swatches = EVENT_PALETTE.map(([hex, name]) => {
+        const clash = clashesWithPerson(hex);
+        const taken = Object.entries(current).some(([c, v]) => c !== cat && v === hex);
+        return `<button type="button" class="ev-color" data-cat-color="${cat}" data-hex="${hex}" style="--c:${hex}"
+          aria-pressed="${current[cat] === hex}"${clash || taken ? ' disabled' : ''}
+          title="${name}${clash ? ' — trop proche de la couleur d’une personne' : taken ? ' — déjà utilisée par un autre type' : ''}" aria-label="${name}"></button>`;
+      }).join('');
+      return `<div class="cat-colors" data-cat="${cat}"><span class="cat-colors-label">${ic(CATS[cat].icon)} ${CATS[cat].label}</span>
+        <div class="ev-colors">${swatches}</div></div>`;
+    }).join('');
+    return `<section class="set-section"><h3>Couleurs des événements</h3>
+      <p class="muted">La couleur d’un bloc indique son type ; le liseré et la pastille indiquent la personne.
+        Les couleurs trop proches de la tienne${partner ? ` ou de celle de ${esc(partner)}` : ''} sont grisées pour éviter toute confusion.</p>
+      ${rows}</section>`;
+  }
+
   /* Sauvegarde, export et restauration ------------------------------------------------ */
   const EXPORT_FIELDS = ['title', 'notes', 'location', 'start_at', 'end_at', 'all_day', 'category', 'is_private',
     'recurrence', 'recurrence_until', 'import_key', 'exdates'];
@@ -1450,6 +1546,16 @@
   }
 
   async function onSettingsClick(e) {
+    const catColor = e.target.closest('[data-cat-color]');
+    if (catColor) {
+      if (catColor.disabled) return;
+      try {
+        await store.updateMe({ event_colors: { ...eventColors(), [catColor.dataset.catColor]: catColor.dataset.hex } });
+        await loadProfiles();
+      } catch (err) { return toastError(err); }
+      renderSettings();
+      return render();
+    }
     const zoneBtn = e.target.closest('[data-zone]');
     if (zoneBtn) {
       schoolZone = zoneBtn.dataset.zone;
@@ -2056,6 +2162,8 @@
     evForm.addEventListener('click', e => {
       const b = e.target.closest('[data-preset]');
       if (b) applyPreset(PRESETS[b.dataset.preset]);
+      const col = e.target.closest('[data-color-ev]');
+      if (col && !col.disabled) { formColor = col.dataset.colorEv || null; renderEventColors(); }
       const sc = e.target.closest('[data-scope]');
       if (sc) setScope(sc.dataset.scope);
     });

@@ -4,7 +4,7 @@
   'use strict';
   const cfg = window.PLANNING_CONFIG || {};
   const EVENT_FIELDS = ['title', 'notes', 'location', 'start_at', 'end_at', 'all_day', 'category',
-    'is_private', 'recurrence', 'recurrence_until', 'import_key', 'exdates'];
+    'is_private', 'recurrence', 'recurrence_until', 'import_key', 'exdates', 'color'];
   const pick = ev => Object.fromEntries(EVENT_FIELDS.map(k => [k, ev[k] ?? null]));
 
   /* Firebase (Auth + Firestore). Les données des deux personnes sont écoutées en

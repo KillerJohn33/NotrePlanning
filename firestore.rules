@@ -32,7 +32,9 @@ service cloud.firestore {
     // Profils ---------------------------------------------------------------
     function validProfile(d) {
       return d.keys().hasOnly(['display_name', 'color', 'partner_id', 'invite_code', 'work_name', 'shift_types', 'notif',
-                               'work_until'])
+                               'work_until', 'event_colors'])
+        // Couleurs choisies pour les types d'événements (Pro, Perso, Commun).
+        && (d.get('event_colors', null) == null || d.event_colors is map)
         // Dernier jour du planning Excel importé (rappel quand il arrive à sa fin).
         && optStr(d, 'work_until', 10)
         // Préférences de notifications : { reminders, reminderMin, partner, morning }.
@@ -83,7 +85,9 @@ service cloud.firestore {
     function validEvent(d) {
       return d.keys().hasOnly(['owner_id', 'title', 'notes', 'location', 'start_at', 'end_at', 'all_day',
                                'category', 'is_private', 'recurrence', 'recurrence_until', 'import_key',
-                               'updated_at', 'updated_by', 'exdates'])
+                               'updated_at', 'updated_by', 'exdates', 'color'])
+        // Couleur propre à l'événement (sinon celle de son type).
+        && (d.get('color', null) == null || (d.color is string && d.color.matches('^#[0-9a-fA-F]{6}$')))
         // Dates retirées d'une série répétée (« modifier / supprimer cette date seulement »).
         && (d.get('exdates', null) == null || (d.exdates is list && d.exdates.size() <= 500))
         // Auteur de la dernière modification (sert aux notifications « a ajouté / a modifié »).
