@@ -67,7 +67,8 @@ service cloud.firestore {
     // Événements ------------------------------------------------------------
     function validEvent(d) {
       return d.keys().hasOnly(['owner_id', 'title', 'notes', 'location', 'start_at', 'end_at', 'all_day',
-                               'category', 'is_private', 'recurrence', 'recurrence_until', 'updated_at'])
+                               'category', 'is_private', 'recurrence', 'recurrence_until', 'import_key',
+                               'updated_at'])
         && d.title is string && d.title.size() <= 200
         && optStr(d, 'notes', 4000) && optStr(d, 'location', 200)
         && d.start_at is string && d.end_at is string && d.end_at > d.start_at
@@ -75,6 +76,8 @@ service cloud.firestore {
         && d.category in ['pro', 'perso', 'commun']
         && d.recurrence in ['none', 'daily', 'weekdays', 'weekly', 'monthly']
         && optStr(d, 'recurrence_until', 10)
+        // Marque des événements importés d'un planning Excel (absente sur les anciens événements).
+        && (d.get('import_key', null) == null || (d.import_key is string && d.import_key.size() <= 40))
         && (d.is_private
               ? d.category != 'commun' && d.title == '' && d.notes == null && d.location == null
               : d.title.size() >= 1);

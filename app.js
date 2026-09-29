@@ -446,6 +446,7 @@
     $('#evSave').hidden = readOnly;
     $('#evCancel').textContent = readOnly ? 'Fermer' : 'Annuler';
     $('#evSeriesNote').hidden = !(ev.id && ev.recurrence !== 'none');
+    $('#evImportNote').hidden = !ev.import_key;
     $('#privateRow').hidden = !state.partner && !ev.is_private;
     syncEventForm();
     evDlg.showModal();
@@ -560,6 +561,11 @@
       </section>
       <section class="set-section"><h3>Planning partagé</h3>${share}</section>
       <section class="set-section">
+        <h3>Planning de travail</h3>
+        <p class="muted">Importe le fichier Excel de ton planning pour remplir automatiquement tes journées, permanences et congés.</p>
+        <div><button class="btn" data-act="import">📥 Importer un fichier Excel</button></div>
+      </section>
+      <section class="set-section">
         <h3>Compte</h3>
         <p class="muted">${esc(state.user?.email)}</p>
         <div>${store.mode === 'demo'
@@ -586,6 +592,9 @@
       } else if (act === 'copy') {
         await navigator.clipboard.writeText(state.household.invite_code);
         return toast('Code copié');
+      } else if (act === 'import') {
+        setDlg.close();
+        return openImport();
       } else if (act === 'logout') {
         setDlg.close();
         return store.signOut();
@@ -618,6 +627,113 @@
         load();
       });
     }
+  }
+
+  /* Import du planning de travail ---------------------------------------------------- */
+  const impDlg = $('#importDlg');
+  const impForm = $('#impForm');
+  const IMP_PREFS_KEY = 'notre-planning-import';
+  const WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  let workbook = null;
+
+  const loadImportPrefs = () => { try { return JSON.parse(localStorage.getItem(IMP_PREFS_KEY) || '{}'); } catch { return {}; } };
+  const fmtIso = (date, opts = { day: 'numeric', month: 'short' }) => fmt(fromInputs(date), opts);
+  const fmtHour = hhmm => hhmm.replace(/^0/, '').replace(':', 'h').replace(/h00$/, 'h');
+  function impStatus(msg) {
+    const p = $('#impStatus');
+    p.hidden = !msg;
+    p.textContent = msg;
+  }
+
+  function openImport() {
+    workbook = null;
+    $('#impFile').value = '';
+    impForm.hidden = true;
+    impStatus('');
+    impDlg.showModal();
+  }
+
+  async function onImportFile() {
+    const file = $('#impFile').files[0];
+    impForm.hidden = true;
+    if (!file) return;
+    impStatus('Lecture du fichier… (quelques secondes pour un gros planning)');
+    await new Promise(r => setTimeout(r, 50)); // laisse le message s'afficher avant le calcul
+    try {
+      workbook = await PlanningImport.readWorkbook(file);
+    } catch (err) {
+      workbook = null;
+      return impStatus(translateError(err));
+    }
+    if (!workbook.people.length) return impStatus('Aucun collaborateur trouvé dans ce fichier.');
+    const prefs = loadImportPrefs();
+    const I = impForm.elements;
+    const match = workbook.people.find(p => p.key === prefs.person);
+    I.person.innerHTML = (match ? '' : '<option value="">— Choisis ton nom —</option>')
+      + workbook.people.map(p => `<option value="${esc(p.key)}"${p === match ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
+    I.from.value = toDateInput(new Date());
+    const hours = { ...PlanningImport.DEFAULT_HOURS, ...prefs.hours };
+    for (const k of Object.keys(PlanningImport.DEFAULT_HOURS)) I[k].value = hours[k];
+    impStatus(`${workbook.people.length} collaborateurs trouvés dans « ${workbook.fileName} ».`);
+    impForm.hidden = false;
+    renderImportPreview();
+  }
+
+  function currentImport() {
+    const I = impForm.elements;
+    const person = workbook?.people.find(p => p.key === I.person.value);
+    if (!person || !I.from.value) return null;
+    const hours = Object.fromEntries(Object.entries(PlanningImport.DEFAULT_HOURS).map(([k, def]) => [k, I[k].value || def]));
+    const plan = PlanningImport.buildPlan(person);
+    const fromDate = I.from.value;
+    return {
+      person, hours, plan, fromDate,
+      events: PlanningImport.planToEvents(plan, hours, fromDate),
+      from: PlanningImport.localDateTime(fromDate),
+      to: PlanningImport.localDateTime(PlanningImport.addDaysIso(plan.last, 1)),
+    };
+  }
+
+  function renderImportPreview() {
+    const box = $('#impPreview');
+    const imp = currentImport();
+    $('#impSubmit').disabled = !imp?.events.length;
+    if (!imp) {
+      box.innerHTML = '';
+      return;
+    }
+    const { plan, events, hours, fromDate } = imp;
+    if (!events.length) {
+      box.innerHTML = `<p>Rien à importer : le planning de ce fichier s’arrête le ${fmtIso(plan.last, { day: 'numeric', month: 'long', year: 'numeric' })}.</p>`;
+      return;
+    }
+    const count = title => events.filter(e => e.title === title && !e.all_day).length;
+    const conges = plan.conges.filter(c => c.to >= fromDate);
+    const rest = plan.restDays.filter(d => d !== 0).map(d => WEEKDAYS[d]);
+    const replaced = store.countImported(PlanningImport.IMPORT_KEY, imp.from, imp.to);
+    box.innerHTML = `
+      <p><strong>${events.length} événements</strong> du ${fmtIso(fromDate)} au ${fmtIso(plan.last, { day: 'numeric', month: 'short', year: 'numeric' })} :</p>
+      <ul>
+        <li>💼 ${count('Travail')} jours de travail : ${fmtHour(hours.start)}–${fmtHour(hours.end)} (matin seul : ${fmtHour(hours.start)}–${fmtHour(hours.morningEnd)})</li>
+        <li>⏰ ${count('Permanence')} permanences : ${fmtHour(hours.start)}–${fmtHour(hours.permEnd)}</li>
+        <li>🌴 ${conges.length} période${conges.length > 1 ? 's' : ''} de congés${conges.length ? ' : '
+          + conges.map(c => (c.from === c.to ? fmtIso(c.from) : `${fmtIso(c.from)} → ${fmtIso(c.to)}`)).join(', ') : ''}</li>
+      </ul>
+      ${rest.length ? `<p class="hint">Repos habituel non importé : ${rest.join(', ')}.</p>` : ''}
+      ${replaced ? `<p class="hint">${replaced} événement${replaced > 1 ? 's' : ''} importé${replaced > 1 ? 's' : ''} précédemment sur cette période ser${replaced > 1 ? 'ont' : 'a'} remplacé${replaced > 1 ? 's' : ''}.</p>` : ''}`;
+  }
+
+  async function submitImport(e) {
+    e.preventDefault();
+    const imp = currentImport();
+    if (!imp?.events.length) return;
+    try { localStorage.setItem(IMP_PREFS_KEY, JSON.stringify({ person: imp.person.key, hours: imp.hours })); } catch { /* ignoré */ }
+    await withBusy($('#impSubmit'), async () => {
+      const { added, removed } = await store.replaceImported(PlanningImport.IMPORT_KEY, imp.from, imp.to, imp.events);
+      impDlg.close();
+      toast(`${added} événements importés${removed ? ` (${removed} remplacés)` : ''}`);
+      load();
+    });
   }
 
   /* Connexion --------------------------------------------------------------------- */
@@ -788,7 +904,11 @@
     setDlg.addEventListener('click', onSettingsClick);
     setDlg.addEventListener('submit', onSettingsSubmit);
 
-    for (const dlg of [evDlg, setDlg]) {
+    $('#impFile').addEventListener('change', onImportFile);
+    impForm.addEventListener('change', renderImportPreview);
+    impForm.addEventListener('submit', submitImport);
+
+    for (const dlg of [evDlg, setDlg, impDlg]) {
       dlg.addEventListener('click', e => {
         if (e.target === dlg || e.target.closest('[data-close]')) dlg.close();
       });
@@ -799,7 +919,7 @@
     $('#authForm').addEventListener('submit', submitAuth);
 
     document.addEventListener('keydown', e => {
-      if (evDlg.open || setDlg.open || $('#app').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (evDlg.open || setDlg.open || impDlg.open || $('#app').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.target.closest('input, textarea, select')) return;
       if (e.key === 'ArrowLeft') step(-1);
       else if (e.key === 'ArrowRight') step(1);

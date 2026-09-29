@@ -1,3 +1,11 @@
 desktop.ini
 Thumbs.db
 .DS_Store
+
+# Plannings de travail (données de collègues) : jamais publiés
+*.xlsx
+*.xlsm
+*.xls
+*.ods
+*.csv
+~$*

@@ -100,6 +100,7 @@
         </label>
         <label class="field" id="untilRow">Jusqu’au (optionnel)<input type="date" name="recurrence_until"></label>
       </div>
+      <p id="evImportNote" class="hint" hidden>📥 Importé depuis ton planning de travail : une nouvelle importation de cette période le remplacera.</p>
       <p id="evSeriesNote" class="hint" hidden>↻ Événement répété : les modifications s’appliquent à toute la série.</p>
       <label class="field">Lieu<input name="location" maxlength="200"></label>
       <label class="field">Notes<textarea name="notes" rows="3" maxlength="4000"></textarea></label>
@@ -123,6 +124,49 @@
   <div class="dlg-body" id="settingsBody"></div>
 </dialog>
 
+<!-- Import du planning de travail -->
+<dialog id="importDlg" aria-labelledby="impDlgTitle">
+  <div class="dlg-head">
+    <h2 id="impDlgTitle">Importer mon planning de travail</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Fermer">✕</button>
+  </div>
+  <div class="dlg-body">
+    <p class="hint">Fichier Excel du planning collaborateurs (colonnes Date, Collaborateur, Demi-journée, Planification).
+      Il est lu sur ton appareil et n’est envoyé nulle part : seuls tes créneaux sont enregistrés.</p>
+    <label class="field">Fichier<input type="file" id="impFile" accept=".xlsx,.xlsm,.xls,.ods"></label>
+    <p id="impStatus" class="imp-status" hidden></p>
+  </div>
+  <form id="impForm" hidden>
+    <div class="dlg-body">
+      <div class="row">
+        <label class="field">Collaborateur<select name="person" required></select></label>
+        <label class="field">À partir du<input type="date" name="from" required></label>
+      </div>
+      <details class="imp-hours">
+        <summary>Horaires utilisés</summary>
+        <div class="row">
+          <label class="field">Début de journée<input type="time" name="start" required></label>
+          <label class="field">Fin journée normale<input type="time" name="end" required></label>
+        </div>
+        <div class="row">
+          <label class="field">Fin de permanence<input type="time" name="permEnd" required></label>
+          <label class="field">Fin du matin seul (samedi)<input type="time" name="morningEnd" required></label>
+        </div>
+        <div class="row">
+          <label class="field">Début de l’après-midi seul<input type="time" name="afternoonStart" required></label>
+          <span></span>
+        </div>
+      </details>
+      <div id="impPreview" class="imp-preview"></div>
+    </div>
+    <div class="dlg-foot">
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Annuler</button>
+      <button type="submit" class="btn primary" id="impSubmit">Importer</button>
+    </div>
+  </form>
+</dialog>
+
 <div id="toast" class="toast" popover="manual" role="status"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -130,6 +174,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="store.js"></script>
+<script src="import.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

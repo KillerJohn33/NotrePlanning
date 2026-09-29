@@ -165,7 +165,7 @@ input, select, textarea { font: inherit; color: inherit; }
   background: color-mix(in srgb, var(--c) 20%, var(--surface));
 }
 .ev:hover { z-index: 3; box-shadow: var(--shadow); background: color-mix(in srgb, var(--c) 30%, var(--surface)); }
-.ev-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }
+.ev-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev-time { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .ev.is-short { flex-direction: row; align-items: center; gap: 6px; padding-top: 0; padding-bottom: 0; white-space: nowrap; }
 .ev.is-masked {
@@ -282,6 +282,21 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 }
 .inline-form { display: flex; gap: 8px; }
 .inline-form .input { flex: 1; text-transform: uppercase; }
+
+/* Import du planning ---------------------------------------------------------------- */
+#importDlg .dlg-body + form .dlg-body { padding-top: 0; }
+.field input[type="file"] { padding: 7px; }
+.imp-status { margin: 0; font-size: 14px; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); }
+.imp-hours summary { cursor: pointer; font-size: 14px; color: var(--muted); padding: 4px 0; }
+.imp-hours[open] { display: flex; flex-direction: column; gap: 10px; }
+.imp-preview:empty { display: none; }
+.imp-preview {
+  font-size: 14px; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--bg);
+}
+.imp-preview p { margin: 0; }
+.imp-preview ul { margin: 8px 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.imp-preview .hint { margin-top: 6px; }
 
 /* Connexion ---------------------------------------------------------------------- */
 .auth {

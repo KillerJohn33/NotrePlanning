@@ -42,6 +42,17 @@ Pense alors à autoriser aussi `localhost` dans l'étape 3 (il l'est normalement
 
 « Arrêter le partage » délie les deux comptes. Chacun garde ses propres événements.
 
+### Importer son planning de travail (Excel)
+
+**⚙ Réglages → Planning de travail → Importer un fichier Excel**. Le fichier doit contenir, dans l'une de ses feuilles,
+une ligne par collaborateur, par jour et par demi-journée, avec les colonnes « Date », « Collaborateur », « Demi-journée » et « Planification ».
+
+- Il est lu dans le navigateur. Seuls les créneaux de la personne choisie sont enregistrés, rien d'autre ne quitte l'appareil.
+- Correspondances : matin et après-midi travaillés → journée (8h30–17h). « Perm » l'après-midi → permanence (8h30–18h).
+  Matin seul → 8h30–12h. Les horaires sont modifiables dans la fenêtre d'import.
+- Le jour de repos habituel (absent au moins 80 % du temps, ex. le lundi) est ignoré. Les autres absences sont regroupées en événements « Congés ».
+- Réimporter remplace les événements déjà importés sur la période, sans créer de doublons. Les événements saisis à la main ne sont pas touchés.
+
 ### Sécurité
 
 Tout est contrôlé par [`firestore.rules`](firestore.rules). Les clés de `config.js` ne sont pas secrètes.
@@ -56,6 +67,7 @@ Tout est contrôlé par [`firestore.rules`](firestore.rules). Les clés de `conf
 | `index.html` | Structure de la page, dialogues |
 | `styles.css` | Styles (variables clair/sombre, responsive) |
 | `app.js` | Interface : vues, récurrences, créneaux libres, formulaires |
+| `import.js` | Lecture du planning Excel (SheetJS chargé à la demande) et conversion en événements |
 | `store.js` | Accès aux données : Firebase (écoute en temps réel) ou mode démo, avec la même interface |
 | `config.js` | Configuration web Firebase |
 | `firestore.rules` | Règles de sécurité Firestore |

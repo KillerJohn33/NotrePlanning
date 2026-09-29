@@ -4,7 +4,7 @@
   'use strict';
   const cfg = window.PLANNING_CONFIG || {};
   const EVENT_FIELDS = ['title', 'notes', 'location', 'start_at', 'end_at', 'all_day', 'category',
-    'is_private', 'recurrence', 'recurrence_until'];
+    'is_private', 'recurrence', 'recurrence_until', 'import_key'];
   const pick = ev => Object.fromEntries(EVENT_FIELDS.map(k => [k, ev[k] ?? null]));
 
   /* Firebase (Auth + Firestore). Les données des deux personnes sont écoutées en
@@ -217,7 +217,12 @@
         const row = pick(ev);
         const ref = ev.id ? db.collection('events').doc(ev.id) : db.collection('events').doc();
         const existing = ev.id ? myEvents.get(ev.id) || partnerEvents.get(ev.id) : null;
-        const doc = { ...row, owner_id: existing ? existing.owner_id : uid, updated_at: FieldValue.serverTimestamp() };
+        const doc = {
+          ...row,
+          import_key: existing ? existing.import_key ?? null : row.import_key,
+          owner_id: existing ? existing.owner_id : uid,
+          updated_at: FieldValue.serverTimestamp(),
+        };
         const batch = db.batch();
         if (row.is_private) {
           // Le titre, le lieu et les notes partent dans eventSecrets, invisible pour l'autre.
@@ -234,6 +239,27 @@
         batch.delete(db.collection('events').doc(id));
         if (secrets.has(id)) batch.delete(secretRef(id));
         await batch.commit();
+      },
+      countImported(key, from, to) {
+        const [a, b] = [from.toISOString(), to.toISOString()];
+        return [...myEvents.values()].filter(e => e.import_key === key && e.start_at >= a && e.start_at < b).length;
+      },
+      // Remplace les événements importés de la période par la nouvelle liste (lots de 400 écritures max).
+      async replaceImported(key, from, to, events) {
+        const [a, b] = [from.toISOString(), to.toISOString()];
+        const stale = [...myEvents.values()].filter(e => e.import_key === key && e.start_at >= a && e.start_at < b);
+        const ops = [
+          ...stale.map(e => batch => batch.delete(db.collection('events').doc(e.id))),
+          ...events.map(ev => batch => batch.set(db.collection('events').doc(), {
+            ...pick(ev), import_key: key, owner_id: uid, updated_at: FieldValue.serverTimestamp(),
+          })),
+        ];
+        for (let i = 0; i < ops.length; i += 400) {
+          const batch = db.batch();
+          ops.slice(i, i + 400).forEach(op => op(batch));
+          await batch.commit();
+        }
+        return { removed: stale.length, added: events.length };
       },
       subscribe(cb) {
         listeners.add(cb);
@@ -340,7 +366,7 @@
           if (i < 0) throw new Error('Événement introuvable');
           const cur = db.events[i];
           if (cur.owner_id !== 'me' && cur.category !== 'commun') throw new Error('Action non autorisée');
-          db.events[i] = { ...cur, ...pick(ev) };
+          db.events[i] = { ...cur, ...pick(ev), import_key: cur.import_key ?? null };
         } else {
           db.events.push({ id: uid(), owner_id: 'me', ...pick(ev) });
         }
@@ -349,6 +375,19 @@
       async deleteEvent(id) {
         db.events = db.events.filter(e => e.id !== id);
         persist();
+      },
+      countImported(key, from, to) {
+        return db.events.filter(e => e.owner_id === 'me' && e.import_key === key
+          && new Date(e.start_at) >= from && new Date(e.start_at) < to).length;
+      },
+      async replaceImported(key, from, to, events) {
+        const stale = e => e.owner_id === 'me' && e.import_key === key
+          && new Date(e.start_at) >= from && new Date(e.start_at) < to;
+        const removed = db.events.filter(stale).length;
+        db.events = db.events.filter(e => !stale(e));
+        events.forEach(ev => db.events.push({ id: uid(), owner_id: 'me', ...pick(ev), import_key: key }));
+        persist();
+        return { removed, added: events.length };
       },
       subscribe(cb) {
         const onStorage = e => { if (e.key === KEY) { db = load(); cb(); } };
