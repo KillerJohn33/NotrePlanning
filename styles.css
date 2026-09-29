@@ -73,7 +73,10 @@ input, select, textarea { font: inherit; color: inherit; }
 
 /* Barre du haut ------------------------------------------------------------- */
 #app { display: flex; flex-direction: column; height: 100dvh; }
+/* sticky : iOS 26 repère ainsi une barre fixée en haut et reprend sa couleur sous
+   l'heure au lieu de flouter le contenu qui passe dessous. */
 .topbar {
+  position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top));
   background: var(--surface); border-bottom: 1px solid var(--border);
