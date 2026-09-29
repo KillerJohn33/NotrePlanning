@@ -19,6 +19,28 @@
 </head>
 <body>
 
+<!-- Icônes (tracés inspirés de Lucide, 24×24, trait hérité de .i) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pro" viewBox="0 0 24 24"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></symbol>
+  <symbol id="i-perso" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-commun" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+  <symbol id="i-laptop" viewBox="0 0 24 24"><path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4"/><path d="M21 5h-4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+  <symbol id="i-import" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></symbol>
+</svg>
+
 <!-- Écran de connexion -->
 <div id="auth" class="auth" hidden>
   <div class="auth-card">
@@ -44,9 +66,9 @@
   <header class="topbar">
     <div class="brand"><img src="icon.svg" alt=""><span>Notre Planning</span></div>
     <div class="nav">
-      <button class="icon-btn" id="prevBtn" aria-label="Précédent">‹</button>
+      <button class="icon-btn" id="prevBtn" aria-label="Précédent"><svg class="i"><use href="#i-left"/></svg></button>
       <button class="btn" id="todayBtn">Aujourd’hui</button>
-      <button class="icon-btn" id="nextBtn" aria-label="Suivant">›</button>
+      <button class="icon-btn" id="nextBtn" aria-label="Suivant"><svg class="i"><use href="#i-right"/></svg></button>
       <h1 id="period"></h1>
     </div>
     <div class="seg" id="viewSeg" role="group" aria-label="Affichage">
@@ -54,22 +76,22 @@
       <button data-view="week">Semaine</button>
       <button data-view="month">Mois</button>
     </div>
-    <button class="icon-btn" id="settingsBtn" aria-label="Réglages">⚙</button>
+    <button class="icon-btn" id="settingsBtn" aria-label="Réglages"><svg class="i"><use href="#i-settings"/></svg></button>
   </header>
 
   <div class="filters">
     <div class="seg" id="whoSeg" role="group" aria-label="Planning affiché"></div>
     <div class="chips" id="catChips" role="group" aria-label="Types">
-      <button class="chip" data-cat="pro">💼 Pro</button>
-      <button class="chip" data-cat="perso">🏠 Perso</button>
-      <button class="chip" data-cat="commun">💞 Commun</button>
+      <button class="chip" data-cat="pro"><svg class="i"><use href="#i-pro"/></svg>Pro</button>
+      <button class="chip" data-cat="perso"><svg class="i"><use href="#i-perso"/></svg>Perso</button>
+      <button class="chip" data-cat="commun"><svg class="i"><use href="#i-commun"/></svg>Commun</button>
     </div>
-    <button class="chip chip-action" id="remoteBtn" type="button">💻 Télétravail</button>
+    <button class="chip chip-action" id="remoteBtn" type="button"><svg class="i"><use href="#i-laptop"/></svg>Télétravail</button>
     <span id="demoBanner" class="demo-banner" hidden>Mode démo : données enregistrées dans ce navigateur uniquement</span>
   </div>
 
   <main id="main" class="main"></main>
-  <button id="fab" class="fab" aria-label="Nouvel événement">+</button>
+  <button id="fab" class="fab" aria-label="Nouvel événement"><svg class="i"><use href="#i-plus"/></svg></button>
 </div>
 
 <!-- Événement -->
@@ -77,15 +99,15 @@
   <form id="eventForm">
     <div class="dlg-head">
       <h2 id="evDlgTitle">Nouvel événement</h2>
-      <button type="button" class="icon-btn" data-close aria-label="Fermer">✕</button>
+      <button type="button" class="icon-btn" data-close aria-label="Fermer"><svg class="i"><use href="#i-x"/></svg></button>
     </div>
     <fieldset id="evFields" class="dlg-body">
       <p id="evOwner" class="owner-note" hidden></p>
       <input name="title" class="input title-input" placeholder="Titre" required maxlength="200" autocomplete="off" aria-label="Titre">
       <div class="seg cat-seg" role="radiogroup" aria-label="Type">
-        <label><input type="radio" name="category" value="pro">💼 Pro</label>
-        <label><input type="radio" name="category" value="perso">🏠 Perso</label>
-        <label><input type="radio" name="category" value="commun">💞 Commun</label>
+        <label data-cat="pro"><input type="radio" name="category" value="pro"><svg class="i"><use href="#i-pro"/></svg>Pro</label>
+        <label data-cat="perso"><input type="radio" name="category" value="perso"><svg class="i"><use href="#i-perso"/></svg>Perso</label>
+        <label data-cat="commun"><input type="radio" name="category" value="commun"><svg class="i"><use href="#i-commun"/></svg>Commun</label>
       </div>
       <label class="check"><input type="checkbox" name="all_day"> Toute la journée</label>
       <div class="row">
@@ -108,11 +130,11 @@
         </label>
         <label class="field" id="untilRow">Jusqu’au (optionnel)<input type="date" name="recurrence_until"></label>
       </div>
-      <p id="evImportNote" class="hint" hidden>📥 Importé depuis ton planning de travail : une nouvelle importation de cette période le remplacera.</p>
-      <p id="evSeriesNote" class="hint" hidden>↻ Événement répété : les modifications s’appliquent à toute la série.</p>
+      <p id="evImportNote" class="hint" hidden><svg class="i"><use href="#i-import"/></svg> Importé depuis ton planning de travail : une nouvelle importation de cette période le remplacera.</p>
+      <p id="evSeriesNote" class="hint" hidden><svg class="i"><use href="#i-repeat"/></svg> Événement répété : les modifications s’appliquent à toute la série.</p>
       <label class="field">Lieu<input name="location" maxlength="200"></label>
       <label class="field">Notes<textarea name="notes" rows="3" maxlength="4000"></textarea></label>
-      <label class="check" id="privateRow"><input type="checkbox" name="is_private"> 🔒 Privé : l’autre personne voit seulement « Occupé »</label>
+      <label class="check" id="privateRow"><input type="checkbox" name="is_private"> <svg class="i"><use href="#i-lock"/></svg> Privé : l’autre personne voit seulement « Occupé »</label>
     </fieldset>
     <div class="dlg-foot">
       <button type="button" class="btn danger" id="evDelete">Supprimer</button>
@@ -127,7 +149,7 @@
 <dialog id="settingsDlg" aria-labelledby="setDlgTitle">
   <div class="dlg-head">
     <h2 id="setDlgTitle">Réglages</h2>
-    <button type="button" class="icon-btn" data-close aria-label="Fermer">✕</button>
+    <button type="button" class="icon-btn" data-close aria-label="Fermer"><svg class="i"><use href="#i-x"/></svg></button>
   </div>
   <div class="dlg-body" id="settingsBody"></div>
 </dialog>
@@ -135,15 +157,15 @@
 <!-- Jours de télétravail -->
 <dialog id="remoteDlg" aria-labelledby="rmDlgTitle">
   <div class="dlg-head">
-    <h2 id="rmDlgTitle">💻 Mes jours de télétravail</h2>
-    <button type="button" class="icon-btn" data-close aria-label="Fermer">✕</button>
+    <h2 id="rmDlgTitle"><svg class="i"><use href="#i-laptop"/></svg> Mes jours de télétravail</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Fermer"><svg class="i"><use href="#i-x"/></svg></button>
   </div>
   <div class="dlg-body">
     <p class="hint">Touche les jours pour les ajouter ou les retirer, sur autant de mois que tu veux, puis enregistre.</p>
     <div class="rm-nav">
-      <button type="button" class="icon-btn" id="rmPrev" aria-label="Mois précédent">‹</button>
+      <button type="button" class="icon-btn" id="rmPrev" aria-label="Mois précédent"><svg class="i"><use href="#i-left"/></svg></button>
       <strong id="rmMonth"></strong>
-      <button type="button" class="icon-btn" id="rmNext" aria-label="Mois suivant">›</button>
+      <button type="button" class="icon-btn" id="rmNext" aria-label="Mois suivant"><svg class="i"><use href="#i-right"/></svg></button>
     </div>
     <div class="rm-grid" id="rmGrid"></div>
     <p class="hint" id="rmCount"></p>
@@ -159,7 +181,7 @@
 <dialog id="importDlg" aria-labelledby="impDlgTitle">
   <div class="dlg-head">
     <h2 id="impDlgTitle">Importer mon planning de travail</h2>
-    <button type="button" class="icon-btn" data-close aria-label="Fermer">✕</button>
+    <button type="button" class="icon-btn" data-close aria-label="Fermer"><svg class="i"><use href="#i-x"/></svg></button>
   </div>
   <div class="dlg-body">
     <p class="hint">Fichier Excel du planning collaborateurs (colonnes Date, Collaborateur, Demi-journée, Planification).

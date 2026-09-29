@@ -5,12 +5,14 @@
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+  // Icône du jeu SVG défini en tête de index.html (#i-<nom>).
+  const ic = name => `<svg class="i" aria-hidden="true"><use href="#i-${name}"/></svg>`;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   const CATS = {
-    pro: { label: 'Pro', icon: '💼' },
-    perso: { label: 'Perso', icon: '🏠' },
-    commun: { label: 'Commun', icon: '💞' },
+    pro: { label: 'Pro', icon: 'pro' },
+    perso: { label: 'Perso', icon: 'perso' },
+    commun: { label: 'Commun', icon: 'commun' },
   };
   const RECUR_LABEL = { daily: 'Tous les jours', weekdays: 'Lun–ven', weekly: 'Chaque semaine', monthly: 'Chaque mois' };
   const HOUR_PX = 48;
@@ -113,13 +115,13 @@
     const title = `Télétravail : ${people.map(p => p.name).join(', ')}`;
     const dots = state.partner ? people.map(p => `<i class="dot" style="--c:${esc(p.color)}"></i>`).join('') : '';
     return withLabel
-      ? `<span class="tag tt-tag" title="${esc(title)}">💻 Télétravail ${dots}</span>`
-      : `<span class="tt" title="${esc(title)}" aria-label="${esc(title)}">💻${dots}</span>`;
+      ? `<span class="tag tt-tag" title="${esc(title)}">${ic('laptop')} Télétravail ${dots}</span>`
+      : `<span class="tt" title="${esc(title)}" aria-label="${esc(title)}">${ic('laptop')}${dots}</span>`;
   }
-  // Un créneau pro d'un jour de télétravail prend l'icône 💻 au lieu de 💼.
+  // Un créneau pro d'un jour de télétravail prend l'icône ordinateur au lieu de la mallette.
   const isRemoteWork = (ev, start) => ev.category === 'pro' && !ev.all_day
     && state.remote[personOf(ev)].has(toDateInput(start));
-  const iconOf = (ev, start) => (isRemoteWork(ev, start) ? '💻' : CATS[ev.category].icon);
+  const iconOf = (ev, start) => ic(isRemoteWork(ev, start) ? 'laptop' : CATS[ev.category].icon);
 
   function getRange() {
     if (state.view === 'week') {
@@ -219,7 +221,7 @@
         ['both', 'Ensemble', null],
       ];
       whoSeg.innerHTML = opts.map(([key, label, color]) =>
-        `<button data-who="${key}" aria-pressed="${state.who === key}">${color ? `<span class="dot" style="--c:${esc(color)}"></span>` : '💞'}${esc(label)}</button>`
+        `<button data-who="${key}" aria-pressed="${state.who === key}">${color ? `<span class="dot" style="--c:${esc(color)}"></span>` : ic('users')}${esc(label)}</button>`
       ).join('');
     }
   }
@@ -271,7 +273,7 @@
       html += `<div class="wk-row wk-allday" style="grid-template-columns:${cols}"><div class="wk-label">Journée</div>`;
       for (const d of dates) {
         const items = allDay.filter(o => o.start < addDays(d, 1) && o.end > d);
-        html += `<div>${items.map(o => `<button class="chip-ev" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${CATS[o.ev.category].icon} ${esc(o.ev.title)}</button>`).join('')}</div>`;
+        html += `<div>${items.map(o => `<button class="chip-ev" data-ev="${o.ev.id}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${ic(CATS[o.ev.category].icon)} ${esc(o.ev.title)}</button>`).join('')}</div>`;
       }
       html += '</div>';
     }
@@ -393,7 +395,7 @@
       }
       if (allOcc) {
         const free = freeTogether(allOcc, d);
-        if (free.length) html += `<p class="ag-free">✨ Libres ensemble : ${free.map(([a, b]) => `${fmtMin(a)} – ${fmtMin(b)}`).join(' · ')}</p>`;
+        if (free.length) html += `<p class="ag-free">${ic('sparkles')} Libres ensemble : ${free.map(([a, b]) => `${fmtMin(a)} – ${fmtMin(b)}`).join(' · ')}</p>`;
       }
       html += '</section>';
     }
@@ -406,13 +408,13 @@
       ? 'Journée'
       : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
     const tags = [];
-    if (state.partner) tags.push(ev.category === 'commun' ? '<span class="tag">💞 Ensemble</span>' : `<span class="tag"><span class="dot" style="--c:${esc(colorOf(ev))}"></span>${esc(nameOf(ev))}</span>`);
+    if (state.partner) tags.push(ev.category === 'commun' ? `<span class="tag">${ic('users')} Ensemble</span>` : `<span class="tag"><span class="dot" style="--c:${esc(colorOf(ev))}"></span>${esc(nameOf(ev))}</span>`);
     tags.push(isRemoteWork(ev, o.start)
-      ? '<span class="tag">💻 Télétravail</span>'
-      : `<span class="tag">${CATS[ev.category].icon} ${CATS[ev.category].label}</span>`);
-    if (ev.is_private) tags.push('<span class="tag">🔒 Privé</span>');
-    if (ev.recurrence && ev.recurrence !== 'none') tags.push(`<span class="tag">↻ ${RECUR_LABEL[ev.recurrence]}</span>`);
-    if (ev.location) tags.push(`<span class="tag">📍 ${esc(ev.location)}</span>`);
+      ? `<span class="tag">${ic('laptop')} Télétravail</span>`
+      : `<span class="tag tag-cat" data-cat="${ev.category}">${ic(CATS[ev.category].icon)} ${CATS[ev.category].label}</span>`);
+    if (ev.is_private) tags.push(`<span class="tag">${ic('lock')} Privé</span>`);
+    if (ev.recurrence && ev.recurrence !== 'none') tags.push(`<span class="tag">${ic('repeat')} ${RECUR_LABEL[ev.recurrence]}</span>`);
+    if (ev.location) tags.push(`<span class="tag">${ic('pin')} ${esc(ev.location)}</span>`);
     return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''}" data-ev="${ev.id}" style="--c:${esc(colorOf(ev))}">
       <span class="ag-time">${time}</span><span class="ag-bar"></span>
       <span class="ag-body"><strong>${esc(ev.title)}</strong><span class="ag-meta">${tags.join('')}</span></span></button>`;
@@ -593,8 +595,8 @@
       <section class="set-section">
         <h3>Planning de travail</h3>
         <p class="muted">Importe le fichier Excel de ton planning pour remplir automatiquement tes journées, permanences et congés.</p>
-        <div><button class="btn" data-act="import">📥 Importer un fichier Excel</button>
-          <button class="btn" data-act="remote">💻 Jours de télétravail</button></div>
+        <div class="btn-row"><button class="btn" data-act="import">${ic('import')} Importer un fichier Excel</button>
+          <button class="btn" data-act="remote">${ic('laptop')} Jours de télétravail</button></div>
       </section>
       <section class="set-section">
         <h3>Compte</h3>
@@ -686,7 +688,7 @@
       const key = toDateInput(d);
       const out = d.getMonth() !== rmMonth.getMonth();
       html += `<button type="button" class="rm-day${out ? ' is-out' : ''}${key === today ? ' is-today' : ''}"
-        data-date="${key}" aria-pressed="${rmDraft.has(key)}" aria-label="${fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })}">${d.getDate()}</button>`;
+        data-date="${key}" aria-pressed="${rmDraft.has(key)}" aria-label="${fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })}">${d.getDate()}${rmDraft.has(key) ? ic('laptop') : ''}</button>`;
     }
     $('#rmGrid').innerHTML = html;
     const monthPrefix = toDateInput(rmMonth).slice(0, 7);
@@ -775,7 +777,7 @@
     const fixed = $('#impPersonFixed');
     fixed.hidden = visible;
     if (!visible) {
-      fixed.innerHTML = `👤 Planning de <strong>${esc(person.name)}</strong> <button type="button" class="link" id="impChangePerson">Changer</button>`;
+      fixed.innerHTML = `${ic('user')} Planning de <strong>${esc(person.name)}</strong> <button type="button" class="link" id="impChangePerson">Changer</button>`;
       $('#impChangePerson').onclick = () => showPersonChoice(true);
     }
   }
@@ -815,9 +817,9 @@
     box.innerHTML = `
       <p><strong>${events.length} événements</strong> du ${fmtIso(fromDate)} au ${fmtIso(plan.last, { day: 'numeric', month: 'short', year: 'numeric' })} :</p>
       <ul>
-        <li>💼 ${count('Travail')} jours de travail : ${fmtHour(hours.start)}–${fmtHour(hours.end)} (matin seul : ${fmtHour(hours.start)}–${fmtHour(hours.morningEnd)})</li>
-        <li>⏰ ${count('Permanence')} permanences : ${fmtHour(hours.start)}–${fmtHour(hours.permEnd)}</li>
-        <li>🌴 ${conges.length} période${conges.length > 1 ? 's' : ''} de congés${conges.length ? ' : '
+        <li>${ic('pro')} ${count('Travail')} jours de travail : ${fmtHour(hours.start)}–${fmtHour(hours.end)} (matin seul : ${fmtHour(hours.start)}–${fmtHour(hours.morningEnd)})</li>
+        <li>${ic('clock')} ${count('Permanence')} permanences : ${fmtHour(hours.start)}–${fmtHour(hours.permEnd)}</li>
+        <li>${ic('sun')} ${conges.length} période${conges.length > 1 ? 's' : ''} de congés${conges.length ? ' : '
           + conges.map(c => (c.from === c.to ? fmtIso(c.from) : `${fmtIso(c.from)} → ${fmtIso(c.to)}`)).join(', ') : ''}</li>
       </ul>
       ${rest.length ? `<p class="hint">Repos habituel non importé : ${rest.join(', ')}.</p>` : ''}
