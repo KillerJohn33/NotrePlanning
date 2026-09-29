@@ -817,3 +817,7 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .ev-view-line .i { color: var(--muted); }
 .ev-view-notes { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px;
   padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
+
+/* Dans les fenêtres, le contenu défile : aucun élément ne doit être comprimé en hauteur
+   (sinon la rangée de suggestions, qui défile en largeur, était écrasée sur petit écran). */
+.dlg-body > * { flex-shrink: 0; }
