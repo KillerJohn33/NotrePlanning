@@ -750,8 +750,7 @@
 
   /* Bouton + : menu de bulles colorées (événement, rendez-vous, anniversaire, horaires…) -- */
   const dialItems = () => [
-    { act: 'event', label: 'Événement', icon: 'month', color: '#4f6bed' },
-    { act: 'rdv', label: 'Rendez-vous', icon: 'doctor', color: '#10b981' },
+    { act: 'event', label: 'Événement / rendez-vous', icon: 'month', color: '#4f6bed' },
     { act: 'birthday', label: 'Anniversaire', icon: 'cake', color: '#ec4899' },
     ...(usesRemote() ? [{ act: 'remote', label: 'Télétravail', icon: 'laptop', color: '#0ea5e9' }] : []),
     { act: 'shifts', label: 'Horaires', icon: 'clock', color: '#f59e0b' },
@@ -780,12 +779,7 @@
     if (act === 'remote') return openWork('remote');
     if (act === 'shifts') return openWork(shiftTypes()[0]?.id);
     newEvent();
-    if (act === 'rdv') {
-      $('#evDlgTitle').textContent = 'Nouveau rendez-vous';
-      F.title.placeholder = 'Avec qui ? (médecin, banque, garage…)';
-      F.category.value = 'perso';
-      syncEventForm();
-    } else if (act === 'birthday') {
+    if (act === 'birthday') {
       $('#evDlgTitle').textContent = 'Nouvel anniversaire';
       applyPreset(PRESETS.find(p => p.yearly));
     }
