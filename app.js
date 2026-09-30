@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v42';
+  const APP_VERSION = 'v43';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -487,19 +487,23 @@
     state.cursor = addDays(state.cursor, dir * 7);
     state.weekScrollTo = 'start';
     load();
+    animateMain(dir > 0 ? 'next' : 'prev');
   }
   function goToday() {
     state.cursor = startOfDay(new Date());
     if (state.view === 'month') return goToMonth(state.cursor);
     state.weekScrollTo = 'cursor';
     load();
+    animateMain('view');
   }
   function setView(view) {
+    const changed = view !== state.view;
     state.view = view;
     if (view === 'month') initMonths(state.cursor);
     if (view === 'week') state.weekScrollTo = 'cursor';
     saveUi();
     load();
+    if (changed) animateMain('view');
   }
 
   // Vue mois : mois actuellement en haut de l'écran, et défilement fluide vers un mois.
@@ -545,6 +549,33 @@
       state.monthPrepended = true;
       load().finally(() => { monthExtending = false; });
     }
+  }
+
+  /* Transitions ---------------------------------------------------------------------
+     Changement de vue : fondu + léger glissement vers le haut ; semaine / période suivante
+     ou précédente : glissement latéral. Fenêtres : apparition (CSS) et fermeture animée.
+     Rien de tout cela si l'appareil demande de réduire les animations. */
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const EASE = 'cubic-bezier(.22, .9, .3, 1)';
+  function animateMain(kind) {
+    if (reduceMotion.matches) return;
+    const from = kind === 'next' ? 'translateX(28px)' : kind === 'prev' ? 'translateX(-28px)' : 'translateY(10px) scale(.995)';
+    $('#main').animate([{ opacity: 0, transform: from }, { opacity: 1, transform: 'none' }],
+      { duration: kind === 'view' ? 260 : 220, easing: EASE });
+  }
+  // Fermeture animée des fenêtres : la vraie fermeture a lieu à la fin de l'animation.
+  const nativeClose = HTMLDialogElement.prototype.close;
+  HTMLDialogElement.prototype.close = function (value) {
+    if (!this.open || reduceMotion.matches || this.classList.contains('is-closing')) return nativeClose.call(this, value);
+    this.classList.add('is-closing');
+    this._closeT = setTimeout(() => { this.classList.remove('is-closing'); nativeClose.call(this, value); }, 170);
+  };
+  // Ouvre une fenêtre, ou annule sa fermeture si elle était en train de se fermer.
+  function openDlg(dlg) {
+    if (dlg.classList.contains('is-closing')) {
+      clearTimeout(dlg._closeT);
+      dlg.classList.remove('is-closing');
+    } else if (!dlg.open) dlg.showModal();
   }
 
   /* Rendu ------------------------------------------------------------------------- */
@@ -950,7 +981,7 @@
     if (!ev) return;
     viewing = { ev, occ: occMs ? new Date(Number(occMs)) : null };
     renderEventView();
-    if (!evViewDlg.open) evViewDlg.showModal();
+    openDlg(evViewDlg);
   }
 
   function renderEventView() {
@@ -1267,7 +1298,7 @@
   function openDay(date) {
     dayDate = startOfDay(date);
     renderDay();
-    if (!dayDlg.open) dayDlg.showModal();
+    openDlg(dayDlg);
   }
 
   function renderDay() {
@@ -1449,7 +1480,7 @@
     try { await loadProfiles(); } catch (err) { toastError(err); }
     await refreshPushSub();
     renderSettings();
-    if (!setDlg.open) setDlg.showModal();
+    openDlg(setDlg);
   }
 
   function renderSettings() {

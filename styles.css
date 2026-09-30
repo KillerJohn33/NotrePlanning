@@ -933,3 +933,31 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 #dayDlg .dlg-foot { flex-wrap: wrap; gap: 8px; padding-left: 16px; padding-right: 16px; }
 #dayDlg .dlg-foot .spacer { display: none; }
 #dayDlg .dlg-foot .btn { flex: 1 1 auto; padding: 0 12px; }
+
+/* === Transitions ===================================================================== */
+/* Fenêtres : apparition en douceur (glissement vers le haut + léger zoom), fond qui s'assombrit ;
+   fermeture : l'inverse, plus rapide (classe is-closing posée par app.js). */
+@keyframes dlg-in { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes dlg-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(10px) scale(.98); } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes reveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+dialog[open] { animation: dlg-in .26s cubic-bezier(.22, .9, .3, 1); }
+dialog[open]::backdrop { animation: fade-in .26s ease; }
+dialog.is-closing { animation: dlg-out .17s ease-in forwards; pointer-events: none; }
+dialog.is-closing::backdrop { animation: fade-out .17s ease-in forwards; }
+/* Panneau des filtres et rubriques des Réglages */
+.filter-pop:not([hidden]) { animation: pop-in .18s cubic-bezier(.22, .9, .3, 1); transform-origin: top left; }
+.set-group[open] > .set-group-body { animation: reveal .22s ease; }
+.set-chev { transition: transform .22s cubic-bezier(.22, .9, .3, 1); }
+/* Onglets de la barre du bas : changement d'état en douceur */
+.tab { transition: background-color .2s ease, color .2s ease, transform .15s ease; }
+.tab:active { transform: scale(.94); }
+@media (prefers-reduced-motion: reduce) {
+  dialog[open], dialog[open]::backdrop, dialog.is-closing, dialog.is-closing::backdrop,
+  .filter-pop:not([hidden]), .set-group[open] > .set-group-body { animation: none; }
+}
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.toast:popover-open { animation: toast-in .22s cubic-bezier(.22, .9, .3, 1); }
+@media (prefers-reduced-motion: reduce) { .toast:popover-open { animation: none; } }
