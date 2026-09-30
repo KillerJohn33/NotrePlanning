@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v39';
+  const APP_VERSION = 'v40';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -109,6 +109,7 @@
     who: savedUi.who || 'both',
     cats: savedUi.cats || { pro: true, perso: true, commun: true },
     cursor: startOfDay(new Date()),
+    monthSel: toDateInput(new Date()), // jour déplié dans la vue mois (téléphone)
     user: null, me: null, partner: null, household: null,
     remote: { me: new Set(), partner: new Set() },
     events: [], range: null,
@@ -186,7 +187,14 @@
   const isSport = ev => ev.category === 'sport';
   const canEdit = ev => !isSport(ev) && (ev.is_mine || ev.category === 'commun');
   const isMasked = ev => !ev.is_mine && ev.is_private;
-  const splitLanes = () => !!state.partner && state.who === 'both';
+  // Vue croisée en demi-colonnes : sur ordinateur seulement. Sur téléphone, les deux plannings
+  // partagent la colonne du jour (liseré de couleur de la personne), bien plus lisible.
+  const splitLanes = () => !!state.partner && state.who === 'both' && !narrowMq.matches;
+  // Créneau de travail habituel (répété, importé ou type d'horaire, 3 h et plus) : affiché en
+  // plus léger pour laisser ressortir les rendez-vous ponctuels.
+  const isRoutine = ev => ev.category === 'pro' && !ev.all_day
+    && (ev.recurrence !== 'none' || !!ev.import_key)
+    && new Date(ev.end_at) - new Date(ev.start_at) >= 3 * 3600e3;
 
   // Télétravail : qui (parmi les personnes affichées) télétravaille ce jour-là.
   function remotePeople(date) {
@@ -435,18 +443,15 @@
       })
       .filter(e => new Date(e.start_at) < to && new Date(e.end_at) > from);
   }
-  let sportOpen = false;
   function sportSection() {
     const when = sportData?.updated_at ? new Date(sportData.updated_at) : null;
-    // Option secondaire : repliée par défaut (ouverte si un sport est suivi ou juste après un clic).
-    return `<details class="set-section set-collapse" id="sportDetails"${followsSport() || sportOpen ? ' open' : ''}>
-      <summary><h3>Sport à suivre</h3><span class="opt">facultatif</span></summary>
+    return `<section class="set-section" id="sportDetails">
       <p class="muted">Les rendez-vous choisis s’ajoutent à ton agenda, en discret et à titre d’info. Réglage propre à cet appareil :
         ${state.partner ? `${esc(state.partner.display_name)} ne les voit pas.` : 'personne d’autre ne les voit.'}</p>
       ${Object.entries(SPORTS).map(([k, sp]) => `<label class="check"><input type="checkbox" data-sport="${k}" ${sportFollow[k] ? 'checked' : ''}>
         <span style="color:${sp.color}">${ic(sp.icon)}</span> <span><strong>${sp.label}</strong> <span class="muted">— ${sp.hint}</span></span></label>`).join('')}
       ${followsSport() && when ? `<p class="muted">Calendrier mis à jour le ${fmt(when, { day: 'numeric', month: 'long' })} à ${fmtTime(when)}.</p>` : ''}
-    </details>`;
+    </section>`;
   }
 
   /* Chargement ------------------------------------------------------------------ */
@@ -548,7 +553,8 @@
     if (!state.range) return;
     renderToolbar();
     const main = $('#main');
-    main.className = `main view-${state.view}`;
+    // Téléphone, vue « Ensemble » : 2 jours visibles au lieu de 3 (deux plannings côte à côte).
+    main.className = `main view-${state.view}${state.partner && state.who === 'both' ? ' is-both' : ''}`;
     $('#app').dataset.view = state.view;
     if (state.view === 'week') renderWeek(main);
     else if (state.view === 'month') renderMonth(main);
@@ -573,6 +579,11 @@
     $$('#viewSeg [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
     renderWorkAlert();
     $$('#catChips [data-cat]').forEach(b => b.setAttribute('aria-pressed', String(!!state.cats[b.dataset.cat])));
+    // Bouton « Filtres » : indique combien de types sont masqués.
+    const hiddenCats = Object.keys(CATS).filter(c => c !== 'sport' && !state.cats[c]).length;
+    $('#filterCount').hidden = !hiddenCats;
+    $('#filterCount').textContent = hiddenCats ? `${3 - hiddenCats}/3` : '';
+    $('#filterBtn').classList.toggle('is-active', hiddenCats > 0);
 
     const whoSeg = $('#whoSeg');
     whoSeg.hidden = !state.partner;
@@ -583,7 +594,7 @@
         ['both', 'Ensemble', null],
       ];
       whoSeg.innerHTML = opts.map(([key, label, color]) =>
-        `<button data-who="${key}" aria-pressed="${state.who === key}" title="${esc(label)}" aria-label="${esc(label)}">${color ? `<span class="dot" style="--c:${esc(color)}"></span>` : ic('users')}<span class="who-label">${esc(label)}</span></button>`
+        `<button data-who="${key}" aria-pressed="${state.who === key}" title="${esc(label)}" aria-label="${esc(label)}">${color ? `<span class="dot" style="--c:${esc(color)}"></span>` : ic('users')}<span class="who-label">${esc(key === 'partner' && narrowMq.matches ? label.split(' ').pop() : label)}</span></button>`
       ).join('');
     }
   }
@@ -702,7 +713,7 @@
     const short = g.height < 34;
     const time = `${fmtTime(o.start)} – ${fmtTime(o.end)}`;
     const tip = `${ev.title} · ${time}${state.partner ? ` · ${nameOf(ev)}` : ''}${ev.location ? ` · ${ev.location}` : ''}`;
-    return `<button class="ev ${isMasked(ev) ? 'is-masked' : ''} ${isSport(ev) ? 'is-info' : ''} ${short ? 'is-short' : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}"
+    return `<button class="ev ${isMasked(ev) ? 'is-masked' : ''} ${isRoutine(ev) ? 'is-routine' : ''} ${isSport(ev) ? 'is-info' : ''} ${short ? 'is-short' : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}"
       style="top:${g.top}px;height:${g.height - 2}px;left:calc(${g.left}% + 2px);width:calc(${g.width}% - 4px);--c:${esc(colorOf(ev))};--pc:${esc(personColorOf(ev))}"
       title="${esc(tip)}"><span class="ev-title">${iconOf(ev, o.start)} ${esc(ev.title)}</span><span class="ev-time">${time}</span></button>`;
   }
@@ -738,6 +749,7 @@
     const occ = visibleOccurrences(from, to);
     const today = new Date();
     const max = narrowMq.matches ? 6 : 3;
+    const selKey = narrowMq.matches ? state.monthSel : null;
 
     // Occurrences rangées par jour (un événement sur plusieurs jours apparaît chaque jour).
     const byDay = new Map();
@@ -759,6 +771,7 @@
       html += '<div class="mo-cell is-blank"></div>'.repeat(lead);
       for (let day = 1; day <= nDays; day++) {
         const d = new Date(m.getFullYear(), m.getMonth(), day);
+        const isSel = selKey === toDateInput(d);
         const all = byDay.get(toDateInput(d)) || [];
         const kindOn = date => offKind(byDay.get(toDateInput(date)) || []);
         const off = kindOn(d);
@@ -768,13 +781,19 @@
         // Vacances scolaires : simple trait coloré en bas de la case (sans prendre de place).
         const school = schoolHolidayOf(d);
         const tip = [hol, school && `${school.name} (zone ${schoolZone})`].filter(Boolean).join(' · ');
-        html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? `is-off${offClass(off)}` : ''} ${hol ? 'is-holiday' : ''} ${school ? 'is-school' : ''}" data-goto="${toDateInput(d)}"${tip ? ` title="${esc(tip)}"` : ''}>
+        html += `<div class="mo-cell ${isSel ? 'is-sel' : ''} ${sameDay(d, today) ? 'is-today' : ''} ${off ? `is-off${offClass(off)}` : ''} ${hol ? 'is-holiday' : ''} ${school ? 'is-school' : ''}" data-goto="${toDateInput(d)}"${tip ? ` title="${esc(tip)}"` : ''}>
           <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}${birthdayBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, kindOn(addDays(d, -1)), kindOn(addDays(d, 1)), d, day === nDays, offTitle)}<div class="mo-events">`;
         for (const o of items.slice(0, max)) {
           const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
           html += `<button class="mo-ev ${isSport(o.ev) ? 'is-info' : ''}" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${isBirthday(o.ev) ? ic('cake') : isSport(o.ev) ? iconOf(o.ev, o.start) : '<i></i>'}<span>${time}${esc(o.ev.title)}</span></button>`;
         }
         html += `</div>${items.length > max ? `<span class="mo-more">+${items.length - max} autre${items.length - max > 1 ? 's' : ''}</span>` : ''}</div>`;
+        // Téléphone : la journée choisie se déplie sous sa semaine (liste lisible des événements).
+        if (selKey && ((lead + day) % 7 === 0 || day === nDays)) {
+          const rowStart = new Date(m.getFullYear(), m.getMonth(), Math.max(1, day - ((lead + day - 1) % 7)));
+          const sel = fromInputs(selKey);
+          if (sel >= rowStart && sel <= d) html += monthDayList(sel, byDay.get(selKey) || []);
+        }
       }
       html += '</div></section>';
     }
@@ -794,11 +813,23 @@
     updateMonthLabel();
   }
 
+  // Liste d'une journée dépliée dans la vue mois (téléphone).
+  function monthDayList(d, occ) {
+    const dEnd = addDays(d, 1);
+    const items = [...occ].sort((a, b) => (b.ev.all_day - a.ev.all_day) || (a.start - b.start));
+    const hol = holidayName(d);
+    return `<div class="mo-daylist"><div class="mo-daylist-head">
+        <strong>${cap(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' }))}</strong>${hol ? `<span class="hol-tag tag">${esc(hol)}</span>` : ''}
+        <button class="btn mo-daylist-add" data-new-at="${toDateInput(d)}">${ic('plus')} Ajouter</button></div>
+      ${items.length ? `<div class="ag-list">${items.map(o => agendaItem(o, d, dEnd)).join('')}</div>` : '<p class="ag-empty">Rien de prévu</p>'}</div>`;
+  }
+
   function renderAgenda(main) {
     const { from, to } = state.range;
     const today = new Date();
     const occ = visibleOccurrences(from, to);
     let html = '<div class="agenda">';
+    if (today >= from && today < to) html += todaySummary(occ);
     for (let i = 0; i < 14; i++) {
       const d = addDays(from, i);
       const dEnd = addDays(d, 1);
@@ -849,11 +880,53 @@
       : ev.all_day
       ? 'Journée'
       : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
-    const tags = eventTags(ev, o.start);
-    if (ev.location) tags.push(`<span class="tag">${ic('pin')} ${esc(ev.location)}</span>`);
-    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isSport(ev) ? 'is-info' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
+    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isRoutine(ev) ? 'is-routine' : ''} ${isSport(ev) ? 'is-info' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
       <span class="ag-time">${time}</span><span class="ag-bar"></span>
-      <span class="ag-body"><strong>${esc(ev.title)}</strong><span class="ag-meta">${tags.join('')}</span></span></button>`;
+      <span class="ag-body"><strong>${iconOf(ev, o.start)}${esc(ev.title)}</strong><span class="ag-line">${agendaLine(ev, o.start)}</span></span></button>`;
+  }
+
+  // Une seule ligne de détails, en gris : personne · type · répétition · lieu. Les étiquettes
+  // complètes restent dans la fiche de l'événement.
+  function agendaLine(ev, start) {
+    const parts = [];
+    if (state.partner) {
+      parts.push(ev.category === 'commun' ? 'Ensemble'
+        : `<span class="dot" style="--c:${esc(personColorOf(ev))}"></span>${esc(isSport(ev) ? 'Moi seul' : nameOf(ev))}`);
+    }
+    if (isSport(ev)) parts.push(esc(ev.sport_kind === 'barca' && ev.notes ? ev.notes : SPORTS[ev.sport_kind].label));
+    else if (isPerm(ev)) parts.push('Permanence');
+    else if (isRemoteWork(ev, start)) parts.push('Télétravail');
+    else if (ev.category !== 'commun' || !state.partner) parts.push(CATS[ev.category].label);
+    if (ev.is_private) parts.push(`${ic('lock')} Privé`);
+    if (ev.recurrence && ev.recurrence !== 'none' && !isBirthday(ev)) parts.push(RECUR_LABEL[ev.recurrence]);
+    if (isBirthday(ev)) {
+      const age = start.getFullYear() - new Date(ev.start_at).getFullYear();
+      if (age > 0) parts.push(`${age} ans`);
+    }
+    if (ev.location) parts.push(esc(ev.location));
+    return parts.map(p => `<span>${p}</span>`).join('<i class="sep">·</i>');
+  }
+
+  // Résumé en tête de l'Agenda : la journée en un coup d'œil.
+  function todaySummary(occ) {
+    const now = new Date();
+    const d = startOfDay(now);
+    const items = occ.filter(o => o.start < addDays(d, 1) && o.end > d && !isOff(o.ev));
+    const bits = [];
+    const next = items.filter(o => !o.ev.all_day && o.start > now).sort((a, b) => a.start - b.start)[0];
+    const current = items.find(o => !o.ev.all_day && o.start <= now && o.end > now);
+    if (current) bits.push(`${ic('clock')} En cours : <b>${esc(current.ev.title)}</b> jusqu’à ${fmtTime(current.end)}`);
+    if (next) bits.push(`${ic('right')} Ensuite : <b>${esc(next.ev.title)}</b> à ${fmtTime(next.start)}`);
+    const remote = remotePeople(d);
+    if (remote.length) bits.push(`${ic('laptop')} Télétravail : ${remote.map(p => esc(p.name)).join(', ')}`);
+    const off = occ.find(o => isOff(o.ev) && o.start < addDays(d, 1) && o.end > d);
+    if (off) bits.push(`${ic('sun')} ${esc(off.ev.title)}`);
+    const count = items.length;
+    return `<section class="today-card">
+      <div class="today-head"><span class="today-kicker">Aujourd’hui</span><strong>${cap(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' }))}</strong></div>
+      <p class="today-count">${count ? `${count} événement${count > 1 ? 's' : ''} prévu${count > 1 ? 's' : ''}` : 'Rien de prévu aujourd’hui'}</p>
+      ${bits.length ? `<ul class="today-bits">${bits.map(b => `<li>${b}</li>`).join('')}</ul>` : ''}
+    </section>`;
   }
 
   /* Formulaire événement ------------------------------------------------------------ */
@@ -1378,6 +1451,11 @@
 
   /* Réglages ---------------------------------------------------------------------- */
   const setDlg = $('#settingsDlg');
+  const setOpen = new Set(); // rubriques des Réglages ouvertes
+  setDlg.addEventListener('toggle', e => {
+    const g = e.target.closest?.('.set-group');
+    if (g) g.open ? setOpen.add(g.dataset.group) : setOpen.delete(g.dataset.group);
+  }, true);
 
   async function openSettings() {
     try { await loadProfiles(); } catch (err) { toastError(err); }
@@ -1407,7 +1485,12 @@
         <p class="muted">… ou saisis le code que l’on t’a envoyé :</p>
         <form class="inline-form" id="joinForm"><input class="input" name="code" placeholder="CODE" maxlength="12" required autocomplete="off" aria-label="Code d’invitation"><button class="btn">Rejoindre</button></form>`;
     }
+    // Réglages rangés en rubriques repliables (état d'ouverture conservé pendant la session).
+    const group = (id, icon, title, hint, body) => `<details class="set-group" data-group="${id}"${setOpen.has(id) ? ' open' : ''}>
+      <summary>${ic(icon)}<span class="set-group-text"><strong>${title}</strong><small>${hint}</small></span>${ic('chevron', 'set-chev')}</summary>
+      <div class="set-group-body">${body}</div></details>`;
     $('#settingsBody').innerHTML = `
+      ${group('profile', 'user', 'Profil et affichage', 'Prénom, couleurs, thème, vacances scolaires', `
       <section class="set-section">
         <h3>Mon profil</h3>
         <form id="profileForm" class="auth-form">
@@ -1432,9 +1515,11 @@
           ${['', 'A', 'B', 'C'].map(z => `<button type="button" data-zone="${z}" aria-pressed="${schoolZone === z}">${z ? `Zone ${z}` : 'Aucune'}</button>`).join('')}
         </div>
         <p class="muted">Affichées dans l’agenda d’après le calendrier officiel de l’Éducation nationale.</p>
-      </section>
-      ${notifSection()}
-      <section class="set-section"><h3>Planning partagé</h3>${share}</section>
+      </section>`)}
+      ${group('share', 'users', 'Partage', partner ? `Relié à ${esc(partner.display_name)}` : household?.waiting ? 'Liaison en cours' : 'Relier ton planning à celui de ta moitié',
+        `<section class="set-section"><h3>Planning partagé</h3>${share}</section>`)}
+      ${group('notif', 'bell', 'Notifications', 'Rappels, changements de l’autre, résumé du matin', notifSection())}
+      ${group('work', 'pro', 'Travail', 'Types d’horaires, import Excel, télétravail', `
       <section class="set-section">
         <h3>Types d’horaires</h3>
         <p class="muted">Tes horaires habituels (ouverture, fermeture…). Place-les ensuite sur plusieurs jours d’un coup avec le bouton + → Horaires.</p>
@@ -1451,9 +1536,8 @@
         <p class="muted">Importe le fichier Excel de ton planning pour remplir automatiquement tes journées, permanences et congés.</p>
         <div class="btn-row"><button class="btn" data-act="import">${ic('import')} Importer un fichier Excel</button>
           <button class="btn" data-act="remote">${ic('laptop')} Jours de télétravail</button></div>
-      </section>
-      ${installSection()}
-      ${sportSection()}
+      </section>`)}
+      ${group('data', 'save', 'Données et application', 'Sauvegarde, export, installation, version', `
       <section class="set-section">
         <h3>Sauvegarde et export</h3>
         <p class="muted">Télécharge tes données pour les garder en lieu sûr, ou pour les ouvrir dans Excel.</p>
@@ -1463,7 +1547,9 @@
         </div>
         <label class="btn restore-btn">${ic('upload')} Restaurer une sauvegarde<input type="file" id="restoreFile" accept="application/json,.json" hidden></label>
       </section>
-      <section class="set-section">
+      ${installSection()}`)}
+      ${group('sport', 'ball', 'Sport à suivre', 'Facultatif · FC Barcelone, Formule 1', sportSection())}
+      <section class="set-section set-account">
         <h3>Compte</h3>
         <p class="muted">${esc(state.user?.email)}</p>
         <div>${store.mode === 'demo'
@@ -1731,7 +1817,6 @@
     const sportBox = e.target.closest('[data-sport]');
     if (sportBox) {
       sportFollow = { ...sportFollow, [sportBox.dataset.sport]: sportBox.checked };
-      sportOpen = true;
       saveSport();
       await ensureSport(true);
       renderSettings();
@@ -2244,6 +2329,15 @@
       saveUi();
       render();
     };
+    const filterPop = open => {
+      $('#catChips').hidden = !open;
+      $('#filterBtn').setAttribute('aria-expanded', String(open));
+    };
+    $('#filterBtn').onclick = e => { e.stopPropagation(); filterPop($('#catChips').hidden); };
+    document.addEventListener('click', e => {
+      if (!$('#catChips').hidden && !e.target.closest('#catChips, #filterBtn')) filterPop(false);
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') filterPop(false); });
     $('#catChips').onclick = e => {
       const b = e.target.closest('[data-cat]');
       if (!b) return;
@@ -2265,8 +2359,19 @@
       if (state.view === 'lists') return onListsClick(e);
       const evEl = e.target.closest('[data-ev]');
       const go = e.target.closest('[data-goto]');
-      // En vue mois sur téléphone, les événements sont de simples pastilles : toute la case ouvre le jour.
-      if (evEl && !(go && state.view === 'month' && narrowMq.matches)) return openEvent(evEl.dataset.ev, evEl.dataset.occ);
+      const newAt = e.target.closest('[data-new-at]');
+      if (newAt) {
+        const d = fromInputs(newAt.dataset.newAt);
+        const now = new Date();
+        return newEvent(new Date(d.getFullYear(), d.getMonth(), d.getDate(), sameDay(d, now) ? Math.min(now.getHours() + 1, 23) : 9));
+      }
+      // En vue mois sur téléphone, les événements sont de simples pastilles : toucher une case
+      // déplie la liste de ce jour sous sa semaine (toucher à nouveau la replie).
+      if (go && state.view === 'month' && narrowMq.matches) {
+        state.monthSel = state.monthSel === go.dataset.goto ? null : go.dataset.goto;
+        return render();
+      }
+      if (evEl) return openEvent(evEl.dataset.ev, evEl.dataset.occ);
       if (go) return openDay(fromInputs(go.dataset.goto));
       const col = e.target.closest('.wk-col');
       if (col) {

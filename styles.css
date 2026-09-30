@@ -434,14 +434,6 @@ dialog::backdrop { background: rgba(10, 12, 20, .45); backdrop-filter: blur(2px)
   #evViewDlg .dlg-foot .btn { font-size: 14px; }
   #evViewDlg .dlg-foot .btn .i { display: none; }
 }
-/* Réglages secondaires, repliés par défaut (ex. Sport à suivre) */
-.set-collapse > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
-.set-collapse > summary::-webkit-details-marker { display: none; }
-.set-collapse > summary::after { content: "›"; margin-left: auto; font-size: 18px; color: var(--muted); transition: transform .2s; }
-.set-collapse[open] > summary::after { transform: rotate(90deg); }
-.set-collapse > summary .opt { font-size: 11px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted);
-  background: var(--surface-2); border-radius: 999px; padding: 1px 8px; }
-.set-collapse:not([open]) { gap: 0; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
 .field input, .field select, .field textarea, .input {
   width: 100%; min-width: 0; border: 1px solid var(--border); background: var(--bg);
@@ -574,28 +566,19 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
   .nav { gap: 4px; }
   .nav .btn { padding: 0 10px; }
   .nav h1 { font-size: 15px; margin-left: 4px; }
-  /* Filtres sur une seule ligne : si tout ne tient pas, la rangée glisse au doigt ;
-     « Ensemble » est réduit à son icône. */
-  .filters { padding: 4px 0 6px; gap: 4px; }
-  .filter-row {
-    flex: 1 1 100%; min-width: 0; flex-wrap: nowrap; gap: 8px;
-    overflow-x: auto; padding: 4px 12px 6px; scrollbar-width: none; overscroll-behavior-x: contain;
-  }
-  .filter-row {
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
-  }
-  .filter-row::-webkit-scrollbar { display: none; }
-  #whoSeg, .chips { flex: none; flex-wrap: nowrap; }
+  /* Filtres : sélecteur de personne en pastilles (libellé du choix actif seulement) et
+     bouton « Filtres » ; tout tient sur une ligne. */
+  .filters { padding: 6px 12px 8px; gap: 6px; }
+  .filter-row { flex: 1 1 100%; min-width: 0; flex-wrap: nowrap; gap: 8px; }
+  #whoSeg { flex: 0 1 auto; min-width: 0; }
   #whoSeg button { padding: 5px 10px; font-size: 13px; }
-  #whoSeg [data-who="both"] .who-label { display: none; }
-  .chips { gap: 6px; }
-  .chip[data-cat] { height: 34px; padding: 0 12px; font-size: 13px; gap: 5px; }
-  .chip[data-cat] .i { width: 16px; height: 16px; }
-  .demo-banner { margin: 0 12px; flex-basis: calc(100% - 24px); }
+  #whoSeg button[aria-pressed="false"] .who-label { display: none; }
+  .filter-btn { height: 34px; padding: 0 12px; font-size: 13px; }
+  .demo-banner { margin: 0; flex-basis: 100%; text-align: center; }
   .mo-grid { grid-auto-rows: minmax(62px, auto); }
   .mo-title { font-size: 16px; padding: 12px 12px 6px; }
   :root { --day-min: calc((100vw - 52px) / 3); }
+  .main.view-week.is-both { --day-min: calc((100vw - 52px) / 2); }
   .wk-scroll { scrollbar-width: none; }
   .wk-scroll::-webkit-scrollbar { display: none; }
   .mo-cell { padding: 3px; align-items: center; }
@@ -855,3 +838,100 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 /* Dans les fenêtres, le contenu défile : aucun élément ne doit être comprimé en hauteur
    (sinon la rangée de suggestions, qui défile en largeur, était écrasée sur petit écran). */
 .dlg-body > * { flex-shrink: 0; }
+
+/* === Modernisation : filtres, cartes, résumé du jour, vue mois, réglages ============== */
+
+/* Bouton « Filtres » et son panneau */
+.filter-row { position: relative; }
+.filter-btn { flex: none; background: var(--ctl-bg); border: 1px solid var(--ctl-border); }
+.filter-btn.is-active { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.filter-count { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--accent); color: var(--accent-text); }
+.filter-pop {
+  position: absolute; z-index: 45; top: calc(100% + 8px); left: 0; width: max-content; max-width: calc(100vw - 24px);
+  padding: 12px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--nav-shadow);
+}
+.filter-pop-title { flex: 1 0 100%; margin: 0 0 2px; font-size: 12px; font-weight: 600; color: var(--muted); }
+#whoSeg .dot { width: 10px; height: 10px; }
+
+/* Typographie : heures en chiffres alignés */
+.ag-time, .ev-time, .mo-ev b, .today-bits { font-variant-numeric: tabular-nums; }
+
+/* Blocs d'événements : fond pastel, texte foncé ; créneaux de travail habituels plus légers */
+.ev { background: color-mix(in srgb, var(--c) 16%, var(--surface)); }
+.ev:hover { background: color-mix(in srgb, var(--c) 24%, var(--surface)); }
+.ev.is-routine {
+  background: color-mix(in srgb, var(--c) 7%, var(--surface));
+  border-left-width: 2px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 14%, transparent);
+}
+.ev.is-routine .ev-title { font-weight: 500; color: var(--muted); }
+.ev.is-routine:hover { background: color-mix(in srgb, var(--c) 14%, var(--surface)); }
+
+/* Agenda : cartes aérées, une seule ligne de détails */
+.ag-ev { padding: 12px 14px; border-radius: 14px; align-items: start; }
+.ag-body strong { font-size: 15.5px; display: flex; align-items: center; gap: 6px; }
+.ag-body strong .i { width: 15px; height: 15px; color: var(--c); flex: none; }
+.ag-line { display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; margin-top: 3px; font-size: 13px; color: var(--muted); }
+.ag-line > span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
+.ag-line .dot { width: 8px; height: 8px; }
+.ag-line .i { width: 13px; height: 13px; }
+.ag-line .sep { font-style: normal; opacity: .6; }
+.ag-ev.is-routine { background: color-mix(in srgb, var(--c) 4%, var(--surface)); }
+.ag-ev.is-routine strong { font-weight: 500; }
+.ag-day + .ag-day { margin-top: 6px; }
+
+/* Résumé « Aujourd'hui » en tête de l'Agenda */
+.today-card {
+  margin: 10px 0 14px; padding: 14px 16px; border-radius: 18px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--surface)), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+}
+.today-head { display: flex; flex-direction: column; gap: 1px; }
+.today-kicker { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.today-head strong { font-size: 18px; }
+.today-count { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.today-bits { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.today-bits li { display: flex; align-items: center; gap: 8px; }
+.today-bits .i { width: 15px; height: 15px; color: var(--accent); }
+
+/* Vue mois (téléphone) : jour choisi et sa liste dépliée sous la semaine */
+.mo-cell.is-sel { box-shadow: inset 0 0 0 2px var(--accent); }
+.mo-daylist {
+  grid-column: 1 / -1; padding: 10px 10px 12px; background: var(--bg);
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.mo-daylist-head { display: flex; align-items: center; gap: 8px; margin: 0 2px 8px; }
+.mo-daylist-head strong { font-size: 15px; }
+.mo-daylist-add { margin-left: auto; height: 32px; padding: 0 12px; font-size: 13px; }
+
+/* Réglages : rubriques repliables */
+.set-group { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); margin-bottom: 10px; overflow: hidden; }
+.set-group > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 13px 14px;
+}
+.set-group > summary::-webkit-details-marker { display: none; }
+.set-group > summary > .i:first-child {
+  width: 34px; height: 34px; padding: 8px; border-radius: 10px; flex: none;
+  color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+}
+.set-group-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.set-group-text strong { font-size: 15px; }
+.set-group-text small { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-chev { color: var(--muted); transition: transform .2s; }
+.set-group[open] > summary .set-chev { transform: rotate(90deg); }
+.set-group[open] > summary { border-bottom: 1px solid var(--border); }
+.set-group-body { padding: 0 14px; }
+.set-group-body > .set-section:first-child { border-top: 0; }
+/* Rubrique d'une seule section : son titre ferait doublon avec celui de la rubrique */
+.set-group-body > .set-section:only-child > h3 { display: none; }
+.set-account { border-top: 0; padding-top: 6px; }
+
+/* Réglages : sélecteurs de thème et de zone sur toute la largeur, sans débordement */
+.set-group-body { padding: 0 12px; }
+.set-group-body .theme-seg, .set-group-body .zone-seg { display: flex; width: 100%; }
+.set-group-body .theme-seg button, .set-group-body .zone-seg button { flex: 1 1 0; min-width: 0; padding-left: 6px; padding-right: 6px; justify-content: center; }
+#settingsBody { gap: 0; }
+@media (max-width: 420px) {
+  .set-group-body .theme-seg button { font-size: 13.5px; gap: 4px; }
+  .set-group-body .theme-seg button .i { display: none; }
+}

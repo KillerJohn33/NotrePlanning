@@ -2,8 +2,8 @@
 
 Petite application web (PWA) pour gérer ses plannings **pro** et **perso** et les **croiser à deux**.
 
-- Vues **Agenda** (liste sur 14 jours), **Semaine** (grille horaire, 3 jours sur mobile) et **Mois**
-- Filtres **Moi / Partenaire / Ensemble** et **Pro / Perso / Commun**
+- Vues **Agenda** (liste sur 14 jours, avec le résumé du jour en tête), **Semaine** (grille horaire ; sur téléphone 3 jours, 2 en vue « Ensemble ») et **Mois** (sur téléphone, toucher un jour déplie sa liste)
+- Filtres **Moi / Partenaire / Ensemble** et, dans le bouton **Filtres**, **Pro / Perso / Commun**
 - Vue croisée : chaque jour est coupé en deux colonnes (une par personne), les événements communs prennent toute la largeur
 - Événements **privés** : l'autre voit seulement « Occupé », sans titre, lieu ni notes (garanti par les règles de sécurité de la base)
 - Événements **communs** : modifiables par les deux
