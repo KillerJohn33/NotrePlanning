@@ -171,7 +171,6 @@ input, select, textarea { font: inherit; color: inherit; }
 [data-cat="pro"] { --cc: var(--ev-pro, #475569); --cs: var(--ev-pro, #475569); }
 [data-cat="perso"] { --cc: var(--ev-perso, #16a34a); --cs: var(--ev-perso, #16a34a); }
 [data-cat="commun"] { --cc: var(--ev-commun, #9333ea); --cs: var(--ev-commun, #9333ea); }
-[data-cat="tv"] { --cc: var(--ev-tv, #0e7490); --cs: var(--ev-tv, #0e7490); }
 
 /* Barre du haut ------------------------------------------------------------- */
 #app { display: flex; flex-direction: column; height: 100dvh; }
@@ -326,17 +325,6 @@ input, select, textarea { font: inherit; color: inherit; }
     color-mix(in srgb, var(--c) 12%, var(--surface)) 0 6px,
     color-mix(in srgb, var(--c) 24%, var(--surface)) 6px 12px);
 }
-/* Sport à la télé : à titre d'info, en retrait (contour pointillé, fond léger, texte atténué). */
-.ev.is-tv {
-  background: color-mix(in srgb, var(--c) 7%, var(--surface));
-  border: 1px dashed color-mix(in srgb, var(--c) 55%, transparent); border-left: 3px solid var(--c);
-  opacity: .85;
-}
-.ev.is-tv .ev-title { font-weight: 500; font-style: italic; }
-.ev.is-tv:hover { opacity: 1; }
-.mo-ev.is-tv span { font-style: italic; color: var(--muted); }
-.ag-ev.is-tv { border-style: dashed; background: color-mix(in srgb, var(--c) 4%, var(--surface)); }
-.ag-ev.is-tv strong { font-weight: 500; font-style: italic; }
 .now { position: absolute; left: 0; right: 0; height: 2px; background: var(--now); z-index: 4; pointer-events: none; }
 .now::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--now); }
 

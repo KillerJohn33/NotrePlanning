@@ -18,7 +18,7 @@ permissions:
 jobs:
   send:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     env:
       TZ: Europe/Paris
     steps:
@@ -43,15 +43,6 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-      # Sport à la télé : si quelqu'un vient de changer ses mots-clés, les programmes sont
-      # recherchés tout de suite (sinon la tâche « Sport à la télé » s'en charge deux fois par jour).
-      - name: Programmes de sport modifiés
-        if: steps.cfg.outputs.ready == 'true'
-        continue-on-error: true
-        working-directory: notifier
-        run: node sport-tv.js --if-changed
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       # GitHub suspend les tâches planifiées d'un dépôt sans activité depuis 60 jours :
       # un commit vide est poussé si le dernier commit date de plus de 45 jours.
       - name: Maintenir la tâche active

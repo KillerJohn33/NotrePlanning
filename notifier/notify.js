@@ -2,11 +2,10 @@
    Lancé toutes les 10 min par .github/workflows/notifications.yml, avec TZ=Europe/Paris
    (les dates « locales » ci-dessous sont donc à l'heure de Paris).
 
-   Types, selon les préférences de chacun (users/{uid}.notif, tvPrefs/{uid}.reminder) :
+   Trois types, selon les préférences de chacun (users/{uid}.notif) :
    - reminders   : rappel `reminderMin` minutes avant ses rendez-vous perso et communs ;
    - partner     : quand l'autre ajoute ou modifie un événement commun ;
-   - morning     : résumé de la journée à 7h ;
-   - sport TV    : rappel avant les programmes trouvés par sport-tv.js (tvEvents).
+   - morning     : résumé de la journée à 7h.
    Les notifications partent vers chaque appareil abonné (pushSubs), en Web Push (VAPID).
    Pour ne rien envoyer deux fois, notifMeta/state mémorise le dernier passage. */
 'use strict';
@@ -136,28 +135,6 @@ async function main() {
         title: titleOf(ev),
         body: `${when}${ev.location && !ev.is_private ? ` · ${ev.location}` : ''}${ev.all_day ? '' : ` (${leadLabel(min)})`}`,
         tag: `rappel-${ev.id}-${o.start.getTime()}`,
-      });
-    }
-  }
-
-  // 1 bis. Sport à la télé : rappel choisi dans tvPrefs (par défaut 15 min avant ; -1 = aucun).
-  const tvPrefs = new Map((await db.collection('tvPrefs').get()).docs.map(d => [d.id, d.data()]));
-  if ([...tvPrefs.keys()].some(id => subs.has(id))) {
-    const tv = await db.collection('tvEvents')
-      .where('start_at', '>=', last.toISOString()).where('start_at', '<', addDays(now, 2).toISOString()).get();
-    for (const d of tv.docs) {
-      const ev = d.data();
-      const p = tvPrefs.get(ev.owner_id);
-      const min = Number.isInteger(p?.reminder) ? p.reminder : 15;
-      if (!subs.has(ev.owner_id) || min < 0) continue;
-      const start = new Date(ev.start_at);
-      const at = start.getTime() - min * 60e3;
-      if (at <= last.getTime() || at > now.getTime()) continue;
-      outbox.push({
-        uid: ev.owner_id,
-        title: `📺 ${ev.title}`,
-        body: `À ${fmtTime(start)}${ev.channel ? ` sur ${ev.channel}` : ''} (${leadLabel(min)})`,
-        tag: `tv-${d.id}`,
       });
     }
   }

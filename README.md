@@ -71,26 +71,12 @@ L'envoi est fait par [`notifier/notify.js`](notifier/notify.js), lancé toutes l
 `FIREBASE_SERVICE_ACCOUNT` (clé JSON d'un compte de service Firebase), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
 La clé publique VAPID figure aussi dans `config.js`.
 
-### Sport à la télé
-
-**⚙ Réglages → Sport à la télé** : saisis des mots-clés (une équipe, une compétition, un sport : « PSG », « Ligue des champions »,
-« XV de France », « Formule 1 »…) et, si tu veux, une liste de chaînes. Les programmes sportifs correspondants sont ajoutés
-tout seuls à ton agenda, avec une icône 📺 et un style discret (à titre d'info). Ils sont **visibles par toi seul** :
-le partenaire relié n'y a pas accès, même en « Occupé ». Le filtre **TV** les masque, « Masquer ce programme » en retire un
-(il ne revient pas), et un rappel est envoyé avant le début (15 min par défaut, réglable).
-
-La recherche est faite par [`notifier/sport-tv.js`](notifier/sport-tv.js) dans le guide des programmes
-[XMLTV de xmltvfr.fr](https://xmltvfr.fr/) (chaînes françaises, environ 5 jours à l'avance), deux fois par jour
-([`.github/workflows/sport-tv.yml`](.github/workflows/sport-tv.yml)) et dans les 10 minutes qui suivent une modification
-des mots-clés. Même secret que les notifications : `FIREBASE_SERVICE_ACCOUNT`. Données : `tvPrefs/{uid}` (réglages) et `tvEvents` (programmes).
-
 ### Sécurité
 
 Tout est contrôlé par [`firestore.rules`](firestore.rules). Les clés de `config.js` ne sont pas secrètes.
 - On ne voit le planning de quelqu'un que si les deux comptes sont reliés **réciproquement**, et la liaison n'est possible que par un code d'invitation.
 - Un événement privé est stocké sans titre, lieu ni notes. Ces détails vont dans `eventSecrets`, que seul l'auteur peut lire.
 - Seuls les événements « commun » sont modifiables par l'autre personne.
-- Les programmes de sport à la télé (`tvEvents`, `tvPrefs`) ne sont lisibles que par leur propriétaire.
 
 ## Structure
 
