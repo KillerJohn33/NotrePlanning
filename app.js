@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v36';
+  const APP_VERSION = 'v37';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -435,16 +435,18 @@
       })
       .filter(e => new Date(e.start_at) < to && new Date(e.end_at) > from);
   }
+  let sportOpen = false;
   function sportSection() {
     const when = sportData?.updated_at ? new Date(sportData.updated_at) : null;
-    return `<section class="set-section">
-      <h3>Sport à suivre</h3>
+    // Option secondaire : repliée par défaut (ouverte si un sport est suivi ou juste après un clic).
+    return `<details class="set-section set-collapse" id="sportDetails"${followsSport() || sportOpen ? ' open' : ''}>
+      <summary><h3>Sport à suivre</h3><span class="opt">facultatif</span></summary>
       <p class="muted">Les rendez-vous choisis s’ajoutent à ton agenda, en discret et à titre d’info. Réglage propre à cet appareil :
         ${state.partner ? `${esc(state.partner.display_name)} ne les voit pas.` : 'personne d’autre ne les voit.'}</p>
       ${Object.entries(SPORTS).map(([k, sp]) => `<label class="check"><input type="checkbox" data-sport="${k}" ${sportFollow[k] ? 'checked' : ''}>
         <span style="color:${sp.color}">${ic(sp.icon)}</span> <span><strong>${sp.label}</strong> <span class="muted">— ${sp.hint}</span></span></label>`).join('')}
       ${followsSport() && when ? `<p class="muted">Calendrier mis à jour le ${fmt(when, { day: 'numeric', month: 'long' })} à ${fmtTime(when)}.</p>` : ''}
-    </section>`;
+    </details>`;
   }
 
   /* Chargement ------------------------------------------------------------------ */
@@ -916,7 +918,32 @@
       ${ev.is_mine ? '' : `<p class="owner-note">${isMasked(ev) ? `Créneau privé de ${esc(nameOf(ev))}.`
         : `Ajouté par ${esc(nameOf(ev))}${canEdit(ev) ? '' : ' (lecture seule)'}.`}</p>`}`;
     $('#evViewEdit').hidden = !canEdit(ev);
+    $('#evViewDelete').hidden = !canEdit(ev);
+    showDelChoice(false);
     $('#evViewCopy').hidden = isMasked(ev) || isSport(ev); // un créneau privé de l'autre n'a rien à recopier
+  }
+
+  // Supprimer depuis la fiche : directement pour un événement simple ; pour une série
+  // (ouverte sur une date), choix entre cette date seulement et toute la série.
+  function showDelChoice(on) {
+    $('#evViewDelChoice').hidden = !on;
+    $('#evViewDelChoice').previousElementSibling.hidden = on;
+  }
+  async function deleteFromView(scope) {
+    const { ev, occ } = viewing;
+    const series = ev.recurrence && ev.recurrence !== 'none';
+    if (!scope) {
+      if (series && occ) return showDelChoice(true);
+      if (!confirm(series ? 'Supprimer toute la série d’événements ?' : `Supprimer « ${ev.title} » ?`)) return;
+      scope = 'all';
+    }
+    await withBusy($(scope === 'one' ? '[data-del="one"]' : scope === 'all' && series && occ ? '[data-del="all"]' : '#evViewDelete'), async () => {
+      if (scope === 'one') await store.saveEvent(withExdate(ev, occ));
+      else await store.deleteEvent(ev.id);
+      evViewDlg.close();
+      toast(scope === 'one' ? `Événement du ${fmt(occ, { day: 'numeric', month: 'long' })} supprimé` : 'Événement supprimé');
+      load();
+    });
   }
 
   // Dupliquer : le formulaire s'ouvre pré-rempli (date de l'occurrence choisie), sans répétition.
@@ -1407,7 +1434,6 @@
         <p class="muted">Affichées dans l’agenda d’après le calendrier officiel de l’Éducation nationale.</p>
       </section>
       ${notifSection()}
-      ${sportSection()}
       <section class="set-section"><h3>Planning partagé</h3>${share}</section>
       <section class="set-section">
         <h3>Types d’horaires</h3>
@@ -1427,6 +1453,7 @@
           <button class="btn" data-act="remote">${ic('laptop')} Jours de télétravail</button></div>
       </section>
       ${installSection()}
+      ${sportSection()}
       <section class="set-section">
         <h3>Sauvegarde et export</h3>
         <p class="muted">Télécharge tes données pour les garder en lieu sûr, ou pour les ouvrir dans Excel.</p>
@@ -1704,6 +1731,7 @@
     const sportBox = e.target.closest('[data-sport]');
     if (sportBox) {
       sportFollow = { ...sportFollow, [sportBox.dataset.sport]: sportBox.checked };
+      sportOpen = true;
       saveSport();
       await ensureSport(true);
       renderSettings();
@@ -2345,6 +2373,13 @@
       fillEventForm(viewing.ev, viewing.occ);
     };
     $('#evViewCopy').onclick = duplicateEvent;
+    $('#evViewDelete').onclick = () => deleteFromView();
+    $('#evViewDelChoice').onclick = e => {
+      const b = e.target.closest('[data-del]');
+      if (!b) return;
+      if (b.dataset.del === 'cancel') showDelChoice(false);
+      else deleteFromView(b.dataset.del);
+    };
 
     for (const dlg of [evDlg, setDlg, impDlg, rmDlg, dayDlg, searchDlg, evViewDlg]) {
       dlg.addEventListener('click', e => {

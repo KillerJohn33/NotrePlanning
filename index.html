@@ -244,7 +244,16 @@
   <div class="dlg-foot">
     <button type="button" class="btn" id="evViewCopy"><svg class="i"><use href="#i-copy"/></svg>Dupliquer</button>
     <span class="spacer"></span>
+    <button type="button" class="btn danger" id="evViewDelete"><svg class="i"><use href="#i-trash"/></svg>Supprimer</button>
     <button type="button" class="btn primary" id="evViewEdit">Modifier</button>
+  </div>
+  <!-- Série répétée : choix de la portée de la suppression -->
+  <div class="dlg-foot" id="evViewDelChoice" hidden>
+    <span class="del-q">Supprimer :</span>
+    <button type="button" class="btn danger" data-del="one">Cette date</button>
+    <button type="button" class="btn danger" data-del="all">Toute la série</button>
+    <span class="spacer"></span>
+    <button type="button" class="btn" data-del="cancel">Annuler</button>
   </div>
 </dialog>
 
