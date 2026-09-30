@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v37';
+  const APP_VERSION = 'v38';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -2406,8 +2406,13 @@
     });
 
     narrowMq.addEventListener('change', () => { if (state.user) load(); });
+    let hiddenAt = 0;
     document.addEventListener('visibilitychange', async () => {
-      if (document.hidden || !state.user) return;
+      if (document.hidden) { hiddenAt = Date.now(); return; }
+      if (!state.user) return;
+      // Plus de 20 s en arrière-plan : la connexion temps réel est relancée pour voir tout de
+      // suite ce que l'autre a ajouté entre-temps.
+      if (hiddenAt && Date.now() - hiddenAt > 20e3) await store.reconnect?.().catch(err => console.error(err));
       try { await loadProfiles(); } catch { /* hors-ligne */ }
       load();
     });

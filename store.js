@@ -250,12 +250,24 @@
         }
         batch.set(ref, doc);
         await batch.commit();
+        // Affichage immédiat, sans attendre l'écoute en temps réel (parfois en retard sur mobile).
+        const secret = row.is_private ? { id: ref.id, owner_id: uid, title: row.title, notes: row.notes, location: row.location } : null;
+        (doc.owner_id === uid ? myEvents : partnerEvents).set(ref.id, { id: ref.id, ...doc, updated_at: null });
+        if (secret) secrets.set(ref.id, secret); else secrets.delete(ref.id);
+        emit();
       },
       async deleteEvent(id) {
         const batch = db.batch();
         batch.delete(db.collection('events').doc(id));
         if (secrets.has(id)) batch.delete(secretRef(id));
         await batch.commit();
+        myEvents.delete(id); partnerEvents.delete(id); secrets.delete(id);
+        emit();
+      },
+      // Retour au premier plan : relance la connexion en temps réel, qu'iOS et Android
+      // laissent parfois endormie après un passage en arrière-plan.
+      async reconnect() {
+        try { await db.disableNetwork(); } finally { await db.enableNetwork(); }
       },
       // Jours de télétravail : liste de dates "AAAA-MM-JJ" par personne.
       async getRemoteDays() {
