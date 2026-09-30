@@ -927,9 +927,6 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
   .set-group-body .theme-seg button .i { display: none; }
 }
 
-/* Fiche du jour : bande de couleur de la personne devant chaque événement (les congés gardent la leur) */
-.ag-ev.is-classic:not(.is-off) .ag-bar { background: var(--band, var(--c)); width: 5px; border-radius: 3px; }
-.ag-ev.is-classic { grid-template-columns: 50px 5px 1fr; }
 /* La bande de couleur prend toute la hauteur de la carte */
 .ag-bar { align-self: stretch; min-height: 100%; }
 /* Fenêtre du jour : boutons du bas sans débordement */

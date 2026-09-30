@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v41';
+  const APP_VERSION = 'v42';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -860,10 +860,7 @@
       : ev.all_day
       ? 'Journée'
       : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
-    // Fiche du jour : la bande devant l'événement prend la couleur de la personne (les deux pour un commun).
-    const band = classic ? `;--band:${ev.category === 'commun' && state.partner
-      ? `linear-gradient(180deg, ${esc(state.me?.color || '#3b82f6')} 50%, ${esc(state.partner.color)} 50%)` : esc(personColorOf(ev))}` : '';
-    return `<button class="ag-ev ${classic ? 'is-classic' : ''} ${isMasked(ev) ? 'is-masked' : ''} ${isRoutine(ev) ? 'is-routine' : ''} ${isSport(ev) ? 'is-info' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}${band}">
+    return `<button class="ag-ev ${classic ? 'is-classic' : ''} ${isMasked(ev) ? 'is-masked' : ''} ${isRoutine(ev) ? 'is-routine' : ''} ${isSport(ev) ? 'is-info' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
       <span class="ag-time">${time}</span><span class="ag-bar"></span>
       <span class="ag-body">${classic ? `<strong>${esc(ev.title)}</strong><span class="ag-meta">${classicTags(ev, o.start)}</span>`
         : `<strong>${iconOf(ev, o.start)}${esc(ev.title)}</strong><span class="ag-line">${agendaLine(ev, o.start)}</span>`}</span></button>`;
