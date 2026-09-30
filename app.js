@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v34';
+  const APP_VERSION = 'v36';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -15,6 +15,8 @@
     pro: { label: 'Pro', icon: 'pro' },
     perso: { label: 'Perso', icon: 'perso' },
     commun: { label: 'Commun', icon: 'commun' },
+    // Calendriers sportifs suivis (sport.json) : lecture seule, à titre d'info, sur cet appareil.
+    sport: { label: 'Sport', icon: 'ball' },
   };
   // Suggestions proposées à la création d'un événement : titre, type, durée (min) ou journée entière.
   const PRESETS = [
@@ -175,12 +177,14 @@
   }
   // Couleur d'un événement : la sienne, sinon celle de son type d'horaire, sinon celle de son type.
   function colorOf(ev) {
+    if (isSport(ev)) return ev.color;
     if (isMasked(ev)) return eventColors()[ev.category];
     if (ev.color && !clashesWithPerson(ev.color)) return ev.color;
     const shift = ev.is_mine && shiftIdOf(ev) && shiftTypes().find(t => t.id === shiftIdOf(ev));
     return shift?.color || eventColors()[ev.category];
   }
-  const canEdit = ev => ev.is_mine || ev.category === 'commun';
+  const isSport = ev => ev.category === 'sport';
+  const canEdit = ev => !isSport(ev) && (ev.is_mine || ev.category === 'commun');
   const isMasked = ev => !ev.is_mine && ev.is_private;
   const splitLanes = () => !!state.partner && state.who === 'both';
 
@@ -344,7 +348,7 @@
       import_key: SHIFT_PREFIX + type.id,
     };
   }
-  const iconOf = (ev, start) => (isPerm(ev) ? ic('perm', 'i-perm')
+  const iconOf = (ev, start) => (isSport(ev) ? ic(SPORTS[ev.sport_kind].icon) : isPerm(ev) ? ic('perm', 'i-perm')
     : ic(isRemoteWork(ev, start) ? 'laptop' : shiftIdOf(ev) ? 'clock'
       : (!isMasked(ev) && presetIcon(ev.title)) || CATS[ev.category].icon));
 
@@ -376,12 +380,71 @@
     const out = [];
     for (const ev of state.events) {
       if (!ignoreFilters) {
-        if (!state.cats[ev.category]) continue;
+        if (!isSport(ev) && !state.cats[ev.category]) continue;
         if (state.partner && state.who !== 'both' && ev.category !== 'commun' && personOf(ev) !== state.who) continue;
       }
       out.push(...occurrences(ev, from, to));
     }
     return out.sort((a, b) => a.start - b.start || b.end - a.end);
+  }
+
+  /* Sport à suivre : matchs du FC Barcelone et Grands Prix de F1 ---------------------
+     sport.json est tenu à jour chaque jour par .github/workflows/sport.yml. Le choix de ce
+     qu'on suit est propre à l'appareil : l'autre personne ne voit rien de ces événements. */
+  const SPORTS = {
+    barca: { label: 'FC Barcelone', icon: 'ball', color: '#a50044', hint: 'matchs de l’équipe masculine, toutes compétitions' },
+    f1: { label: 'Formule 1', icon: 'flag', color: '#e10600', hint: 'Grands Prix (course du dimanche)' },
+  };
+  const SPORT_KEY = 'notre-planning-sport';
+  const SPORT_URLS = ['https://raw.githubusercontent.com/KillerJohn33/NotrePlanning/main/sport.json', 'sport.json'];
+  let sportFollow = (() => { try { return JSON.parse(localStorage.getItem(SPORT_KEY) || '{}').follow || {}; } catch { return {}; } })();
+  let sportData = (() => { try { return JSON.parse(localStorage.getItem(SPORT_KEY) || '{}').data || null; } catch { return null; } })();
+  let sportFetchedAt = 0;
+  const followsSport = () => Object.keys(SPORTS).some(k => sportFollow[k]);
+  const saveSport = () => { try { localStorage.setItem(SPORT_KEY, JSON.stringify({ follow: sportFollow, data: sportData })); } catch { /* ignoré */ } };
+
+  // Récupère sport.json (au plus toutes les 3 h) ; hors ligne, la dernière copie sert.
+  async function ensureSport(force = false) {
+    if (!followsSport() || (!force && Date.now() - sportFetchedAt < 3 * 3600e3)) return;
+    sportFetchedAt = Date.now();
+    for (const url of SPORT_URLS) {
+      try {
+        const res = await fetch(url, { cache: 'no-cache' });
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (!Array.isArray(data.events)) continue;
+        sportData = data;
+        saveSport();
+        return;
+      } catch { /* essai suivant */ }
+    }
+  }
+  function sportRows(from, to) {
+    if (!followsSport() || !sportData) return [];
+    return sportData.events
+      .filter(e => sportFollow[e.kind] && SPORTS[e.kind])
+      .map(e => {
+        let start = new Date(e.start_at), end = new Date(e.end_at);
+        if (e.all_day) { start = startOfDay(start); end = addDays(start, 1); } // horaire pas encore fixé
+        return {
+          id: `sport-${e.id}`, category: 'sport', sport_kind: e.kind, color: SPORTS[e.kind].color,
+          title: e.title, location: e.location || null, notes: e.detail || null,
+          start_at: start.toISOString(), end_at: end.toISOString(), all_day: !!e.all_day,
+          is_mine: true, is_private: false, recurrence: 'none', recurrence_until: null, import_key: null,
+        };
+      })
+      .filter(e => new Date(e.start_at) < to && new Date(e.end_at) > from);
+  }
+  function sportSection() {
+    const when = sportData?.updated_at ? new Date(sportData.updated_at) : null;
+    return `<section class="set-section">
+      <h3>Sport à suivre</h3>
+      <p class="muted">Les rendez-vous choisis s’ajoutent à ton agenda, en discret et à titre d’info. Réglage propre à cet appareil :
+        ${state.partner ? `${esc(state.partner.display_name)} ne les voit pas.` : 'personne d’autre ne les voit.'}</p>
+      ${Object.entries(SPORTS).map(([k, sp]) => `<label class="check"><input type="checkbox" data-sport="${k}" ${sportFollow[k] ? 'checked' : ''}>
+        <span style="color:${sp.color}">${ic(sp.icon)}</span> <span><strong>${sp.label}</strong> <span class="muted">— ${sp.hint}</span></span></label>`).join('')}
+      ${followsSport() && when ? `<p class="muted">Calendrier mis à jour le ${fmt(when, { day: 'numeric', month: 'long' })} à ${fmtTime(when)}.</p>` : ''}
+    </section>`;
   }
 
   /* Chargement ------------------------------------------------------------------ */
@@ -391,9 +454,9 @@
     render();
     const seq = ++loadSeq;
     try {
-      const rows = await store.listEvents(state.range.from, state.range.to);
+      const [rows] = await Promise.all([store.listEvents(state.range.from, state.range.to), ensureSport()]);
       if (seq !== loadSeq) return;
-      state.events = rows;
+      state.events = [...rows, ...sportRows(state.range.from, state.range.to)];
       render();
     } catch (err) {
       toastError(err);
@@ -637,7 +700,7 @@
     const short = g.height < 34;
     const time = `${fmtTime(o.start)} – ${fmtTime(o.end)}`;
     const tip = `${ev.title} · ${time}${state.partner ? ` · ${nameOf(ev)}` : ''}${ev.location ? ` · ${ev.location}` : ''}`;
-    return `<button class="ev ${isMasked(ev) ? 'is-masked' : ''} ${short ? 'is-short' : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}"
+    return `<button class="ev ${isMasked(ev) ? 'is-masked' : ''} ${isSport(ev) ? 'is-info' : ''} ${short ? 'is-short' : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}"
       style="top:${g.top}px;height:${g.height - 2}px;left:calc(${g.left}% + 2px);width:calc(${g.width}% - 4px);--c:${esc(colorOf(ev))};--pc:${esc(personColorOf(ev))}"
       title="${esc(tip)}"><span class="ev-title">${iconOf(ev, o.start)} ${esc(ev.title)}</span><span class="ev-time">${time}</span></button>`;
   }
@@ -707,7 +770,7 @@
           <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}${birthdayBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, kindOn(addDays(d, -1)), kindOn(addDays(d, 1)), d, day === nDays, offTitle)}<div class="mo-events">`;
         for (const o of items.slice(0, max)) {
           const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
-          html += `<button class="mo-ev" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${isBirthday(o.ev) ? ic('cake') : '<i></i>'}<span>${time}${esc(o.ev.title)}</span></button>`;
+          html += `<button class="mo-ev ${isSport(o.ev) ? 'is-info' : ''}" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${isBirthday(o.ev) ? ic('cake') : isSport(o.ev) ? iconOf(o.ev, o.start) : '<i></i>'}<span>${time}${esc(o.ev.title)}</span></button>`;
         }
         html += `</div>${items.length > max ? `<span class="mo-more">+${items.length - max} autre${items.length - max > 1 ? 's' : ''}</span>` : ''}</div>`;
       }
@@ -755,6 +818,12 @@
   // Étiquettes d'un événement (personne, type, permanence, télétravail, privé, répétition, âge).
   function eventTags(ev, start) {
     const tags = [];
+    if (isSport(ev)) {
+      const sp = SPORTS[ev.sport_kind];
+      tags.push(`<span class="tag" style="color:${sp.color}">${ic(sp.icon)} <span style="color:var(--muted)">${esc(ev.sport_kind === 'barca' && ev.notes ? ev.notes : sp.label)}</span></span>`);
+      if (state.partner) tags.push(`<span class="tag">${ic('lock')} Visible par moi seul</span>`);
+      return tags;
+    }
     if (state.partner) tags.push(ev.category === 'commun' ? `<span class="tag">${ic('users')} Ensemble</span>` : `<span class="tag"><span class="dot" style="--c:${esc(personColorOf(ev))}"></span>${esc(nameOf(ev))}</span>`);
     const perm = isPerm(ev);
     const remote = isRemoteWork(ev, start);
@@ -780,7 +849,7 @@
       : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
     const tags = eventTags(ev, o.start);
     if (ev.location) tags.push(`<span class="tag">${ic('pin')} ${esc(ev.location)}</span>`);
-    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
+    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isSport(ev) ? 'is-info' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
       <span class="ag-time">${time}</span><span class="ag-bar"></span>
       <span class="ag-body"><strong>${esc(ev.title)}</strong><span class="ag-meta">${tags.join('')}</span></span></button>`;
   }
@@ -841,12 +910,13 @@
       <p class="ev-view-when">${ic('clock')} ${when}</p>
       <div class="ag-meta">${eventTags(ev, start).join('')}</div>
       ${ev.location ? `<p class="ev-view-line">${ic('pin')} ${esc(ev.location)}</p>` : ''}
-      ${reminderLabel(ev) ? `<p class="ev-view-line">${ic('bell')} Rappel : ${reminderLabel(ev).toLowerCase()}</p>` : ''}
+      ${!isSport(ev) && reminderLabel(ev) ? `<p class="ev-view-line">${ic('bell')} Rappel : ${reminderLabel(ev).toLowerCase()}</p>` : ''}
       ${ev.notes ? `<p class="ev-view-notes">${esc(ev.notes)}</p>` : ''}
+      ${isSport(ev) ? `<p class="owner-note">À titre d’info, d’après le calendrier ${esc(SPORTS[ev.sport_kind].label)}.${ev.all_day ? ' Horaire pas encore fixé.' : ''} Réglages → Sport à suivre.</p>` : ''}
       ${ev.is_mine ? '' : `<p class="owner-note">${isMasked(ev) ? `Créneau privé de ${esc(nameOf(ev))}.`
         : `Ajouté par ${esc(nameOf(ev))}${canEdit(ev) ? '' : ' (lecture seule)'}.`}</p>`}`;
     $('#evViewEdit').hidden = !canEdit(ev);
-    $('#evViewCopy').hidden = isMasked(ev); // un créneau privé de l'autre n'a rien à recopier
+    $('#evViewCopy').hidden = isMasked(ev) || isSport(ev); // un créneau privé de l'autre n'a rien à recopier
   }
 
   // Dupliquer : le formulaire s'ouvre pré-rempli (date de l'occurrence choisie), sans répétition.
@@ -1337,6 +1407,7 @@
         <p class="muted">Affichées dans l’agenda d’après le calendrier officiel de l’Éducation nationale.</p>
       </section>
       ${notifSection()}
+      ${sportSection()}
       <section class="set-section"><h3>Planning partagé</h3>${share}</section>
       <section class="set-section">
         <h3>Types d’horaires</h3>
@@ -1630,6 +1701,14 @@
   }
 
   async function onSettingsClick(e) {
+    const sportBox = e.target.closest('[data-sport]');
+    if (sportBox) {
+      sportFollow = { ...sportFollow, [sportBox.dataset.sport]: sportBox.checked };
+      saveSport();
+      await ensureSport(true);
+      renderSettings();
+      return load();
+    }
     const catColor = e.target.closest('[data-cat-color]');
     if (catColor) {
       if (catColor.disabled) return;

@@ -1,0 +1,37 @@
+# Calendriers sportifs suivis (⚙ Réglages → Sport à suivre) : matchs du FC Barcelone et
+# Grands Prix de Formule 1, enregistrés dans sport.json que l'app affiche. Aucun secret requis.
+name: Calendriers sportifs
+
+on:
+  schedule:
+    - cron: '41 5 * * *'   # chaque matin (heure UTC)
+  workflow_dispatch:       # lancement manuel depuis l'onglet Actions
+
+concurrency:
+  group: sport
+  cancel-in-progress: false
+
+permissions:
+  contents: write          # pour enregistrer sport.json
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Récupérer les calendriers
+        run: node notifier/sport.js
+      - name: Enregistrer sport.json s'il a changé
+        run: |
+          if [ -n "$(git status --porcelain sport.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add sport.json
+            git commit -m "Calendriers sportifs mis à jour"
+            git pull --rebase origin main
+            git push
+          fi

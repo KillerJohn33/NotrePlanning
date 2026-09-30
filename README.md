@@ -71,6 +71,16 @@ L'envoi est fait par [`notifier/notify.js`](notifier/notify.js), lancé toutes l
 `FIREBASE_SERVICE_ACCOUNT` (clé JSON d'un compte de service Firebase), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
 La clé publique VAPID figure aussi dans `config.js`.
 
+### Sport à suivre
+
+**⚙ Réglages → Sport à suivre** : coche **FC Barcelone** (matchs de l'équipe masculine, toutes compétitions) et/ou
+**Formule 1** (Grands Prix). Les rendez-vous s'ajoutent à l'agenda en discret (contour pointillé, italique), à titre d'info.
+Le choix est propre à l'appareil : l'autre personne ne voit rien.
+
+Le calendrier est dans [`sport.json`](sport.json), mis à jour chaque matin par
+[`.github/workflows/sport.yml`](.github/workflows/sport.yml) ([`notifier/sport.js`](notifier/sport.js)) à partir
+d'ESPN (FC Barcelone) et de l'API Jolpica, successeur d'Ergast (Formule 1). Aucun secret n'est nécessaire.
+
 ### Sécurité
 
 Tout est contrôlé par [`firestore.rules`](firestore.rules). Les clés de `config.js` ne sont pas secrètes.

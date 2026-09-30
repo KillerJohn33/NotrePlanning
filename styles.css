@@ -325,6 +325,15 @@ input, select, textarea { font: inherit; color: inherit; }
     color-mix(in srgb, var(--c) 12%, var(--surface)) 0 6px,
     color-mix(in srgb, var(--c) 24%, var(--surface)) 6px 12px);
 }
+/* Sport à suivre : à titre d'info, en retrait (contour pointillé, fond léger, italique). */
+.ev.is-info {
+  background: color-mix(in srgb, var(--c) 8%, var(--surface));
+  border: 1px dashed color-mix(in srgb, var(--c) 55%, transparent); border-left: 3px solid var(--c);
+}
+.ev.is-info .ev-title { font-weight: 500; font-style: italic; }
+.mo-ev.is-info span { font-style: italic; }
+.ag-ev.is-info { border-style: dashed; background: color-mix(in srgb, var(--c) 4%, var(--surface)); }
+.ag-ev.is-info strong { font-weight: 500; font-style: italic; }
 .now { position: absolute; left: 0; right: 0; height: 2px; background: var(--now); z-index: 4; pointer-events: none; }
 .now::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--now); }
 
