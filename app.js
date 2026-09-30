@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v40';
+  const APP_VERSION = 'v41';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -109,7 +109,6 @@
     who: savedUi.who || 'both',
     cats: savedUi.cats || { pro: true, perso: true, commun: true },
     cursor: startOfDay(new Date()),
-    monthSel: toDateInput(new Date()), // jour déplié dans la vue mois (téléphone)
     user: null, me: null, partner: null, household: null,
     remote: { me: new Set(), partner: new Set() },
     events: [], range: null,
@@ -749,7 +748,6 @@
     const occ = visibleOccurrences(from, to);
     const today = new Date();
     const max = narrowMq.matches ? 6 : 3;
-    const selKey = narrowMq.matches ? state.monthSel : null;
 
     // Occurrences rangées par jour (un événement sur plusieurs jours apparaît chaque jour).
     const byDay = new Map();
@@ -771,7 +769,6 @@
       html += '<div class="mo-cell is-blank"></div>'.repeat(lead);
       for (let day = 1; day <= nDays; day++) {
         const d = new Date(m.getFullYear(), m.getMonth(), day);
-        const isSel = selKey === toDateInput(d);
         const all = byDay.get(toDateInput(d)) || [];
         const kindOn = date => offKind(byDay.get(toDateInput(date)) || []);
         const off = kindOn(d);
@@ -781,19 +778,13 @@
         // Vacances scolaires : simple trait coloré en bas de la case (sans prendre de place).
         const school = schoolHolidayOf(d);
         const tip = [hol, school && `${school.name} (zone ${schoolZone})`].filter(Boolean).join(' · ');
-        html += `<div class="mo-cell ${isSel ? 'is-sel' : ''} ${sameDay(d, today) ? 'is-today' : ''} ${off ? `is-off${offClass(off)}` : ''} ${hol ? 'is-holiday' : ''} ${school ? 'is-school' : ''}" data-goto="${toDateInput(d)}"${tip ? ` title="${esc(tip)}"` : ''}>
+        html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? `is-off${offClass(off)}` : ''} ${hol ? 'is-holiday' : ''} ${school ? 'is-school' : ''}" data-goto="${toDateInput(d)}"${tip ? ` title="${esc(tip)}"` : ''}>
           <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}${birthdayBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, kindOn(addDays(d, -1)), kindOn(addDays(d, 1)), d, day === nDays, offTitle)}<div class="mo-events">`;
         for (const o of items.slice(0, max)) {
           const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
           html += `<button class="mo-ev ${isSport(o.ev) ? 'is-info' : ''}" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${isBirthday(o.ev) ? ic('cake') : isSport(o.ev) ? iconOf(o.ev, o.start) : '<i></i>'}<span>${time}${esc(o.ev.title)}</span></button>`;
         }
         html += `</div>${items.length > max ? `<span class="mo-more">+${items.length - max} autre${items.length - max > 1 ? 's' : ''}</span>` : ''}</div>`;
-        // Téléphone : la journée choisie se déplie sous sa semaine (liste lisible des événements).
-        if (selKey && ((lead + day) % 7 === 0 || day === nDays)) {
-          const rowStart = new Date(m.getFullYear(), m.getMonth(), Math.max(1, day - ((lead + day - 1) % 7)));
-          const sel = fromInputs(selKey);
-          if (sel >= rowStart && sel <= d) html += monthDayList(sel, byDay.get(selKey) || []);
-        }
       }
       html += '</div></section>';
     }
@@ -811,17 +802,6 @@
       main.scrollTop = prevTop;
     }
     updateMonthLabel();
-  }
-
-  // Liste d'une journée dépliée dans la vue mois (téléphone).
-  function monthDayList(d, occ) {
-    const dEnd = addDays(d, 1);
-    const items = [...occ].sort((a, b) => (b.ev.all_day - a.ev.all_day) || (a.start - b.start));
-    const hol = holidayName(d);
-    return `<div class="mo-daylist"><div class="mo-daylist-head">
-        <strong>${cap(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' }))}</strong>${hol ? `<span class="hol-tag tag">${esc(hol)}</span>` : ''}
-        <button class="btn mo-daylist-add" data-new-at="${toDateInput(d)}">${ic('plus')} Ajouter</button></div>
-      ${items.length ? `<div class="ag-list">${items.map(o => agendaItem(o, d, dEnd)).join('')}</div>` : '<p class="ag-empty">Rien de prévu</p>'}</div>`;
   }
 
   function renderAgenda(main) {
@@ -873,16 +853,27 @@
     return tags;
   }
 
-  function agendaItem(o, d, dEnd) {
+  function agendaItem(o, d, dEnd, classic = false) {
     const ev = o.ev;
     const time = isBirthday(ev)
       ? `<span class="bd" aria-label="Anniversaire">${ic('cake')}</span>`
       : ev.all_day
       ? 'Journée'
       : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
-    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isRoutine(ev) ? 'is-routine' : ''} ${isSport(ev) ? 'is-info' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
+    // Fiche du jour : la bande devant l'événement prend la couleur de la personne (les deux pour un commun).
+    const band = classic ? `;--band:${ev.category === 'commun' && state.partner
+      ? `linear-gradient(180deg, ${esc(state.me?.color || '#3b82f6')} 50%, ${esc(state.partner.color)} 50%)` : esc(personColorOf(ev))}` : '';
+    return `<button class="ag-ev ${classic ? 'is-classic' : ''} ${isMasked(ev) ? 'is-masked' : ''} ${isRoutine(ev) ? 'is-routine' : ''} ${isSport(ev) ? 'is-info' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}${band}">
       <span class="ag-time">${time}</span><span class="ag-bar"></span>
-      <span class="ag-body"><strong>${iconOf(ev, o.start)}${esc(ev.title)}</strong><span class="ag-line">${agendaLine(ev, o.start)}</span></span></button>`;
+      <span class="ag-body">${classic ? `<strong>${esc(ev.title)}</strong><span class="ag-meta">${classicTags(ev, o.start)}</span>`
+        : `<strong>${iconOf(ev, o.start)}${esc(ev.title)}</strong><span class="ag-line">${agendaLine(ev, o.start)}</span>`}</span></button>`;
+  }
+
+  // Étiquettes d'origine (fiche du jour) : personne, type, lieu…
+  function classicTags(ev, start) {
+    const tags = eventTags(ev, start);
+    if (ev.location) tags.push(`<span class="tag">${ic('pin')} ${esc(ev.location)}</span>`);
+    return tags.join('');
   }
 
   // Une seule ligne de détails, en gris : personne · type · répétition · lieu. Les étiquettes
@@ -1292,7 +1283,7 @@
     const badges = `${sameDay(d, new Date()) ? '<span class="badge">Aujourd’hui</span>' : ''}${holidayTag(d)}${schoolTag(d)}${dayRemoteNote(d, items)}`;
     let html = badges ? `<div class="day-badges">${badges}</div>` : '';
     html += items.length
-      ? `<div class="ag-list">${items.map(o => agendaItem(o, d, dEnd)).join('')}</div>`
+      ? `<div class="ag-list">${items.map(o => agendaItem(o, d, dEnd, true)).join('')}</div>`
       : '<p class="ag-empty">Rien de prévu ce jour-là.</p>';
     $('#dayBody').innerHTML = html;
   }
@@ -2359,19 +2350,8 @@
       if (state.view === 'lists') return onListsClick(e);
       const evEl = e.target.closest('[data-ev]');
       const go = e.target.closest('[data-goto]');
-      const newAt = e.target.closest('[data-new-at]');
-      if (newAt) {
-        const d = fromInputs(newAt.dataset.newAt);
-        const now = new Date();
-        return newEvent(new Date(d.getFullYear(), d.getMonth(), d.getDate(), sameDay(d, now) ? Math.min(now.getHours() + 1, 23) : 9));
-      }
-      // En vue mois sur téléphone, les événements sont de simples pastilles : toucher une case
-      // déplie la liste de ce jour sous sa semaine (toucher à nouveau la replie).
-      if (go && state.view === 'month' && narrowMq.matches) {
-        state.monthSel = state.monthSel === go.dataset.goto ? null : go.dataset.goto;
-        return render();
-      }
-      if (evEl) return openEvent(evEl.dataset.ev, evEl.dataset.occ);
+      // En vue mois sur téléphone, les événements sont de simples pastilles : toute la case ouvre le jour.
+      if (evEl && !(go && state.view === 'month' && narrowMq.matches)) return openEvent(evEl.dataset.ev, evEl.dataset.occ);
       if (go) return openDay(fromInputs(go.dataset.goto));
       const col = e.target.closest('.wk-col');
       if (col) {

@@ -894,15 +894,6 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
 .today-bits li { display: flex; align-items: center; gap: 8px; }
 .today-bits .i { width: 15px; height: 15px; color: var(--accent); }
 
-/* Vue mois (téléphone) : jour choisi et sa liste dépliée sous la semaine */
-.mo-cell.is-sel { box-shadow: inset 0 0 0 2px var(--accent); }
-.mo-daylist {
-  grid-column: 1 / -1; padding: 10px 10px 12px; background: var(--bg);
-  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-}
-.mo-daylist-head { display: flex; align-items: center; gap: 8px; margin: 0 2px 8px; }
-.mo-daylist-head strong { font-size: 15px; }
-.mo-daylist-add { margin-left: auto; height: 32px; padding: 0 12px; font-size: 13px; }
 
 /* Réglages : rubriques repliables */
 .set-group { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); margin-bottom: 10px; overflow: hidden; }
@@ -935,3 +926,13 @@ fieldset:disabled .cat-seg label, fieldset:disabled .check { opacity: .75; }
   .set-group-body .theme-seg button { font-size: 13.5px; gap: 4px; }
   .set-group-body .theme-seg button .i { display: none; }
 }
+
+/* Fiche du jour : bande de couleur de la personne devant chaque événement (les congés gardent la leur) */
+.ag-ev.is-classic:not(.is-off) .ag-bar { background: var(--band, var(--c)); width: 5px; border-radius: 3px; }
+.ag-ev.is-classic { grid-template-columns: 50px 5px 1fr; }
+/* La bande de couleur prend toute la hauteur de la carte */
+.ag-bar { align-self: stretch; min-height: 100%; }
+/* Fenêtre du jour : boutons du bas sans débordement */
+#dayDlg .dlg-foot { flex-wrap: wrap; gap: 8px; padding-left: 16px; padding-right: 16px; }
+#dayDlg .dlg-foot .spacer { display: none; }
+#dayDlg .dlg-foot .btn { flex: 1 1 auto; padding: 0 12px; }
