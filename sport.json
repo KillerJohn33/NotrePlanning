@@ -1,4 +1,605 @@
 {
- "updated_at": null,
- "events": []
+ "updated_at": "2026-09-30T13:58:45.103Z",
+ "events": [
+  {
+   "id": "barca-401906710",
+   "kind": "barca",
+   "title": "FC Basel – FC Barcelone (2-5)",
+   "start_at": "2026-08-16T14:30:00.000Z",
+   "end_at": "2026-08-16T16:30:00.000Z",
+   "all_day": false,
+   "location": "St. Jakob Park",
+   "detail": "Match amical"
+  },
+  {
+   "id": "f1-2026-12",
+   "kind": "f1",
+   "title": "F1 · Dutch GP",
+   "start_at": "2026-08-23T13:00:00.000Z",
+   "end_at": "2026-08-23T15:00:00.000Z",
+   "all_day": false,
+   "location": "Circuit Park Zandvoort, Zandvoort, Netherlands",
+   "detail": "Manche 12 · Dutch Grand Prix\nQualifications : samedi 16:00\nCourse sprint : samedi 12:00"
+  },
+  {
+   "id": "barca-401882913",
+   "kind": "barca",
+   "title": "Elche – FC Barcelone (0-5)",
+   "start_at": "2026-08-23T19:30:00.000Z",
+   "end_at": "2026-08-23T21:30:00.000Z",
+   "all_day": false,
+   "location": "Estadio Martínez Valero",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882921",
+   "kind": "barca",
+   "title": "FC Barcelone – Athletic Club (2-0)",
+   "start_at": "2026-08-27T19:00:00.000Z",
+   "end_at": "2026-08-27T21:00:00.000Z",
+   "all_day": false,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882903",
+   "kind": "barca",
+   "title": "FC Barcelone – Rayo Vallecano (5-2)",
+   "start_at": "2026-08-31T19:30:00.000Z",
+   "end_at": "2026-08-31T21:30:00.000Z",
+   "all_day": false,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "f1-2026-13",
+   "kind": "f1",
+   "title": "F1 · Italian GP",
+   "start_at": "2026-09-06T13:00:00.000Z",
+   "end_at": "2026-09-06T15:00:00.000Z",
+   "all_day": false,
+   "location": "Autodromo Nazionale di Monza, Monza, Italy",
+   "detail": "Manche 13 · Italian Grand Prix\nQualifications : samedi 16:00"
+  },
+  {
+   "id": "barca-401882888",
+   "kind": "barca",
+   "title": "Valencia – FC Barcelone (0-5)",
+   "start_at": "2026-09-06T14:15:00.000Z",
+   "end_at": "2026-09-06T16:15:00.000Z",
+   "all_day": false,
+   "location": "Mestalla Stadium",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401915424",
+   "kind": "barca",
+   "title": "FC Barcelone – Feyenoord Rotterdam (5-1)",
+   "start_at": "2026-09-09T16:45:00.000Z",
+   "end_at": "2026-09-09T18:45:00.000Z",
+   "all_day": false,
+   "location": "Spotify Camp Nou",
+   "detail": "Ligue des champions"
+  },
+  {
+   "id": "f1-2026-14",
+   "kind": "f1",
+   "title": "F1 · Spanish GP",
+   "start_at": "2026-09-13T13:00:00.000Z",
+   "end_at": "2026-09-13T15:00:00.000Z",
+   "all_day": false,
+   "location": "Madring, Madrid, Spain",
+   "detail": "Manche 14 · Spanish Grand Prix\nQualifications : samedi 16:00"
+  },
+  {
+   "id": "barca-401882883",
+   "kind": "barca",
+   "title": "Levante – FC Barcelone (2-4)",
+   "start_at": "2026-09-13T14:15:00.000Z",
+   "end_at": "2026-09-13T16:15:00.000Z",
+   "all_day": false,
+   "location": "Estadi Ciutat de València",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882871",
+   "kind": "barca",
+   "title": "FC Barcelone – Racing Santander (7-2)",
+   "start_at": "2026-09-16T19:30:00.000Z",
+   "end_at": "2026-09-16T21:30:00.000Z",
+   "all_day": false,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882859",
+   "kind": "barca",
+   "title": "Sevilla – FC Barcelone (1-3)",
+   "start_at": "2026-09-19T19:00:00.000Z",
+   "end_at": "2026-09-19T21:00:00.000Z",
+   "all_day": false,
+   "location": "Ramón Sánchez Pizjuán Stadium",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "f1-2026-15",
+   "kind": "f1",
+   "title": "F1 · Azerbaijan GP",
+   "start_at": "2026-09-26T11:00:00.000Z",
+   "end_at": "2026-09-26T13:00:00.000Z",
+   "all_day": false,
+   "location": "Baku City Circuit, Baku, Azerbaijan",
+   "detail": "Manche 15 · Azerbaijan Grand Prix\nQualifications : vendredi 14:00"
+  },
+  {
+   "id": "f1-2026-16",
+   "kind": "f1",
+   "title": "F1 · Bahrain Grand Prix in Malaysia GP",
+   "start_at": "2026-10-04T07:00:00.000Z",
+   "end_at": "2026-10-04T09:00:00.000Z",
+   "all_day": false,
+   "location": "Sepang International Circuit, Kuala Lumpur, Malaysia",
+   "detail": "Manche 16 · Bahrain Grand Prix in Malaysia\nQualifications : samedi 10:00"
+  },
+  {
+   "id": "barca-401882853",
+   "kind": "barca",
+   "title": "FC Barcelone – Getafe",
+   "start_at": "2026-10-10T16:30:00.000Z",
+   "end_at": "2026-10-10T18:30:00.000Z",
+   "all_day": false,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "f1-2026-17",
+   "kind": "f1",
+   "title": "F1 · Singapore GP",
+   "start_at": "2026-10-11T12:00:00.000Z",
+   "end_at": "2026-10-11T14:00:00.000Z",
+   "all_day": false,
+   "location": "Marina Bay Street Circuit, Marina Bay, Singapore",
+   "detail": "Manche 17 · Singapore Grand Prix\nQualifications : samedi 15:00\nCourse sprint : samedi 11:00"
+  },
+  {
+   "id": "barca-401915435",
+   "kind": "barca",
+   "title": "Galatasaray – FC Barcelone",
+   "start_at": "2026-10-13T19:00:00.000Z",
+   "end_at": "2026-10-13T21:00:00.000Z",
+   "all_day": false,
+   "location": "RAMS Park",
+   "detail": "Ligue des champions"
+  },
+  {
+   "id": "barca-401882846",
+   "kind": "barca",
+   "title": "Real Betis – FC Barcelone",
+   "start_at": "2026-10-17T16:30:00.000Z",
+   "end_at": "2026-10-17T18:30:00.000Z",
+   "all_day": false,
+   "location": "Estadio La Cartuja",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401915399",
+   "kind": "barca",
+   "title": "Paris Saint-Germain – FC Barcelone",
+   "start_at": "2026-10-20T19:00:00.000Z",
+   "end_at": "2026-10-20T21:00:00.000Z",
+   "all_day": false,
+   "location": "Parc des Princes",
+   "detail": "Ligue des champions"
+  },
+  {
+   "id": "barca-401882832",
+   "kind": "barca",
+   "title": "FC Barcelone – Real Madrid",
+   "start_at": "2026-10-25T20:00:00.000Z",
+   "end_at": "2026-10-25T22:00:00.000Z",
+   "all_day": false,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "f1-2026-18",
+   "kind": "f1",
+   "title": "F1 · United States GP",
+   "start_at": "2026-10-25T20:00:00.000Z",
+   "end_at": "2026-10-25T22:00:00.000Z",
+   "all_day": false,
+   "location": "Circuit of the Americas, Austin, USA",
+   "detail": "Manche 18 · United States Grand Prix\nQualifications : samedi 23:00"
+  },
+  {
+   "id": "barca-401882822",
+   "kind": "barca",
+   "title": "FC Barcelone – Alavés",
+   "start_at": "2026-11-01T20:00:00.000Z",
+   "end_at": "2026-11-01T22:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "f1-2026-19",
+   "kind": "f1",
+   "title": "F1 · Mexico City GP",
+   "start_at": "2026-11-01T20:00:00.000Z",
+   "end_at": "2026-11-01T22:00:00.000Z",
+   "all_day": false,
+   "location": "Autódromo Hermanos Rodríguez, Mexico City, Mexico",
+   "detail": "Manche 19 · Mexico City Grand Prix\nQualifications : samedi 22:00"
+  },
+  {
+   "id": "barca-401915387",
+   "kind": "barca",
+   "title": "FC Barcelone – Aston Villa",
+   "start_at": "2026-11-03T20:00:00.000Z",
+   "end_at": "2026-11-03T22:00:00.000Z",
+   "all_day": false,
+   "location": "Spotify Camp Nou",
+   "detail": "Ligue des champions"
+  },
+  {
+   "id": "f1-2026-20",
+   "kind": "f1",
+   "title": "F1 · Brazilian GP",
+   "start_at": "2026-11-08T17:00:00.000Z",
+   "end_at": "2026-11-08T19:00:00.000Z",
+   "all_day": false,
+   "location": "Autódromo José Carlos Pace, São Paulo, Brazil",
+   "detail": "Manche 20 · Brazilian Grand Prix\nQualifications : samedi 19:00"
+  },
+  {
+   "id": "barca-401882816",
+   "kind": "barca",
+   "title": "Atlético Madrid – FC Barcelone",
+   "start_at": "2026-11-08T20:00:00.000Z",
+   "end_at": "2026-11-08T22:00:00.000Z",
+   "all_day": true,
+   "location": "Riyadh Air Metropolitano",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "f1-2026-21",
+   "kind": "f1",
+   "title": "F1 · Las Vegas GP",
+   "start_at": "2026-11-22T04:00:00.000Z",
+   "end_at": "2026-11-22T06:00:00.000Z",
+   "all_day": false,
+   "location": "Las Vegas Strip Street Circuit, Las Vegas, USA",
+   "detail": "Manche 21 · Las Vegas Grand Prix\nQualifications : samedi 05:00"
+  },
+  {
+   "id": "barca-401882804",
+   "kind": "barca",
+   "title": "FC Barcelone – Villarreal",
+   "start_at": "2026-11-22T20:00:00.000Z",
+   "end_at": "2026-11-22T22:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401915378",
+   "kind": "barca",
+   "title": "Sabah FK – FC Barcelone",
+   "start_at": "2026-11-25T17:45:00.000Z",
+   "end_at": "2026-11-25T19:45:00.000Z",
+   "all_day": false,
+   "location": "Baku Olympic Stadium",
+   "detail": "Ligue des champions"
+  },
+  {
+   "id": "f1-2026-22",
+   "kind": "f1",
+   "title": "F1 · Qatar GP",
+   "start_at": "2026-11-29T16:00:00.000Z",
+   "end_at": "2026-11-29T18:00:00.000Z",
+   "all_day": false,
+   "location": "Lusail International Circuit, Lusail, Qatar",
+   "detail": "Manche 22 · Qatar Grand Prix\nQualifications : samedi 19:00"
+  },
+  {
+   "id": "barca-401882794",
+   "kind": "barca",
+   "title": "Deportivo – FC Barcelone",
+   "start_at": "2026-11-29T20:00:00.000Z",
+   "end_at": "2026-11-29T22:00:00.000Z",
+   "all_day": true,
+   "location": "Riazor",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "f1-2026-23",
+   "kind": "f1",
+   "title": "F1 · Abu Dhabi GP",
+   "start_at": "2026-12-06T13:00:00.000Z",
+   "end_at": "2026-12-06T15:00:00.000Z",
+   "all_day": false,
+   "location": "Yas Marina Circuit, Abu Dhabi, UAE",
+   "detail": "Manche 23 · Abu Dhabi Grand Prix\nQualifications : samedi 15:00"
+  },
+  {
+   "id": "barca-401882783",
+   "kind": "barca",
+   "title": "FC Barcelone – Celta Vigo",
+   "start_at": "2026-12-06T20:00:00.000Z",
+   "end_at": "2026-12-06T22:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401915285",
+   "kind": "barca",
+   "title": "FC Barcelone – Manchester City",
+   "start_at": "2026-12-08T20:00:00.000Z",
+   "end_at": "2026-12-08T22:00:00.000Z",
+   "all_day": false,
+   "location": "Spotify Camp Nou",
+   "detail": "Ligue des champions"
+  },
+  {
+   "id": "barca-401882770",
+   "kind": "barca",
+   "title": "Málaga – FC Barcelone",
+   "start_at": "2026-12-13T20:00:00.000Z",
+   "end_at": "2026-12-13T22:00:00.000Z",
+   "all_day": true,
+   "location": "La Rosaleda",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882762",
+   "kind": "barca",
+   "title": "FC Barcelone – Real Sociedad",
+   "start_at": "2026-12-20T20:00:00.000Z",
+   "end_at": "2026-12-20T22:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882754",
+   "kind": "barca",
+   "title": "Espanyol – FC Barcelone",
+   "start_at": "2027-01-03T20:00:00.000Z",
+   "end_at": "2027-01-03T22:00:00.000Z",
+   "all_day": true,
+   "location": "RCDE Stadium",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882740",
+   "kind": "barca",
+   "title": "Osasuna – FC Barcelone",
+   "start_at": "2027-01-10T20:00:00.000Z",
+   "end_at": "2027-01-10T22:00:00.000Z",
+   "all_day": true,
+   "location": "El Sadar",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882733",
+   "kind": "barca",
+   "title": "FC Barcelone – Elche",
+   "start_at": "2027-01-17T20:00:00.000Z",
+   "end_at": "2027-01-17T22:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401915356",
+   "kind": "barca",
+   "title": "Sporting CP – FC Barcelone",
+   "start_at": "2027-01-20T20:00:00.000Z",
+   "end_at": "2027-01-20T22:00:00.000Z",
+   "all_day": false,
+   "location": "Estádio José Alvalade",
+   "detail": "Ligue des champions"
+  },
+  {
+   "id": "barca-401882726",
+   "kind": "barca",
+   "title": "Alavés – FC Barcelone",
+   "start_at": "2027-01-24T20:00:00.000Z",
+   "end_at": "2027-01-24T22:00:00.000Z",
+   "all_day": true,
+   "location": "Mendizorrotza",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401915264",
+   "kind": "barca",
+   "title": "FC Barcelone – Como",
+   "start_at": "2027-01-27T20:00:00.000Z",
+   "end_at": "2027-01-27T22:00:00.000Z",
+   "all_day": false,
+   "location": "Spotify Camp Nou",
+   "detail": "Ligue des champions"
+  },
+  {
+   "id": "barca-401882713",
+   "kind": "barca",
+   "title": "FC Barcelone – Valencia",
+   "start_at": "2027-01-31T20:00:00.000Z",
+   "end_at": "2027-01-31T22:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401892163",
+   "kind": "barca",
+   "title": "FC Barcelone – Atlético Madrid",
+   "start_at": "2027-02-02T19:00:00.000Z",
+   "end_at": "2027-02-02T21:00:00.000Z",
+   "all_day": false,
+   "location": "Şükrü Saracoğlu Stadium",
+   "detail": "Supercoupe d’Espagne"
+  },
+  {
+   "id": "barca-401882700",
+   "kind": "barca",
+   "title": "FC Barcelone – Atlético Madrid",
+   "start_at": "2027-02-07T20:00:00.000Z",
+   "end_at": "2027-02-07T22:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882687",
+   "kind": "barca",
+   "title": "Villarreal – FC Barcelone",
+   "start_at": "2027-02-14T20:00:00.000Z",
+   "end_at": "2027-02-14T22:00:00.000Z",
+   "all_day": true,
+   "location": "Estadio de la Cerámica",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882681",
+   "kind": "barca",
+   "title": "FC Barcelone – Levante",
+   "start_at": "2027-02-21T20:00:00.000Z",
+   "end_at": "2027-02-21T22:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882676",
+   "kind": "barca",
+   "title": "Athletic Club – FC Barcelone",
+   "start_at": "2027-02-28T20:00:00.000Z",
+   "end_at": "2027-02-28T22:00:00.000Z",
+   "all_day": true,
+   "location": "San Mamés",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882661",
+   "kind": "barca",
+   "title": "FC Barcelone – Real Betis",
+   "start_at": "2027-03-07T20:00:00.000Z",
+   "end_at": "2027-03-07T22:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882652",
+   "kind": "barca",
+   "title": "FC Barcelone – Deportivo",
+   "start_at": "2027-03-14T18:00:00.000Z",
+   "end_at": "2027-03-14T20:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882641",
+   "kind": "barca",
+   "title": "Rayo Vallecano – FC Barcelone",
+   "start_at": "2027-03-21T18:00:00.000Z",
+   "end_at": "2027-03-21T20:00:00.000Z",
+   "all_day": true,
+   "location": "Estadio de Vallecas",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882632",
+   "kind": "barca",
+   "title": "FC Barcelone – Sevilla",
+   "start_at": "2027-04-04T18:00:00.000Z",
+   "end_at": "2027-04-04T20:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882621",
+   "kind": "barca",
+   "title": "Racing Santander – FC Barcelone",
+   "start_at": "2027-04-11T18:00:00.000Z",
+   "end_at": "2027-04-11T20:00:00.000Z",
+   "all_day": true,
+   "location": "El Sardineros",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882611",
+   "kind": "barca",
+   "title": "FC Barcelone – Espanyol",
+   "start_at": "2027-04-18T18:00:00.000Z",
+   "end_at": "2027-04-18T20:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882605",
+   "kind": "barca",
+   "title": "Celta Vigo – FC Barcelone",
+   "start_at": "2027-04-21T18:00:00.000Z",
+   "end_at": "2027-04-21T20:00:00.000Z",
+   "all_day": true,
+   "location": "Balaidos",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882591",
+   "kind": "barca",
+   "title": "FC Barcelone – Osasuna",
+   "start_at": "2027-05-02T18:00:00.000Z",
+   "end_at": "2027-05-02T20:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882579",
+   "kind": "barca",
+   "title": "Real Madrid – FC Barcelone",
+   "start_at": "2027-05-09T18:00:00.000Z",
+   "end_at": "2027-05-09T20:00:00.000Z",
+   "all_day": true,
+   "location": "Santiago Bernabéu",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882568",
+   "kind": "barca",
+   "title": "Real Sociedad – FC Barcelone",
+   "start_at": "2027-05-16T18:00:00.000Z",
+   "end_at": "2027-05-16T20:00:00.000Z",
+   "all_day": true,
+   "location": "Reale Arena",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882562",
+   "kind": "barca",
+   "title": "FC Barcelone – Málaga",
+   "start_at": "2027-05-23T18:00:00.000Z",
+   "end_at": "2027-05-23T20:00:00.000Z",
+   "all_day": true,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
+   "id": "barca-401882552",
+   "kind": "barca",
+   "title": "Getafe – FC Barcelone",
+   "start_at": "2027-05-30T18:00:00.000Z",
+   "end_at": "2027-05-30T20:00:00.000Z",
+   "all_day": true,
+   "location": "Estadio Coliseum",
+   "detail": "LaLiga"
+  }
+ ]
 }
