@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-09-30T13:58:45.103Z",
+ "updated_at": "2026-09-30T13:59:20.697Z",
  "events": [
   {
    "id": "barca-401906710",
@@ -14,7 +14,7 @@
   {
    "id": "f1-2026-12",
    "kind": "f1",
-   "title": "F1 · Dutch GP",
+   "title": "F1 · Dutch Grand Prix",
    "start_at": "2026-08-23T13:00:00.000Z",
    "end_at": "2026-08-23T15:00:00.000Z",
    "all_day": false,
@@ -54,7 +54,7 @@
   {
    "id": "f1-2026-13",
    "kind": "f1",
-   "title": "F1 · Italian GP",
+   "title": "F1 · Italian Grand Prix",
    "start_at": "2026-09-06T13:00:00.000Z",
    "end_at": "2026-09-06T15:00:00.000Z",
    "all_day": false,
@@ -84,7 +84,7 @@
   {
    "id": "f1-2026-14",
    "kind": "f1",
-   "title": "F1 · Spanish GP",
+   "title": "F1 · Spanish Grand Prix",
    "start_at": "2026-09-13T13:00:00.000Z",
    "end_at": "2026-09-13T15:00:00.000Z",
    "all_day": false,
@@ -124,7 +124,7 @@
   {
    "id": "f1-2026-15",
    "kind": "f1",
-   "title": "F1 · Azerbaijan GP",
+   "title": "F1 · Azerbaijan Grand Prix",
    "start_at": "2026-09-26T11:00:00.000Z",
    "end_at": "2026-09-26T13:00:00.000Z",
    "all_day": false,
@@ -134,7 +134,7 @@
   {
    "id": "f1-2026-16",
    "kind": "f1",
-   "title": "F1 · Bahrain Grand Prix in Malaysia GP",
+   "title": "F1 · Bahrain Grand Prix in Malaysia",
    "start_at": "2026-10-04T07:00:00.000Z",
    "end_at": "2026-10-04T09:00:00.000Z",
    "all_day": false,
@@ -154,7 +154,7 @@
   {
    "id": "f1-2026-17",
    "kind": "f1",
-   "title": "F1 · Singapore GP",
+   "title": "F1 · Singapore Grand Prix",
    "start_at": "2026-10-11T12:00:00.000Z",
    "end_at": "2026-10-11T14:00:00.000Z",
    "all_day": false,
@@ -204,7 +204,7 @@
   {
    "id": "f1-2026-18",
    "kind": "f1",
-   "title": "F1 · United States GP",
+   "title": "F1 · United States Grand Prix",
    "start_at": "2026-10-25T20:00:00.000Z",
    "end_at": "2026-10-25T22:00:00.000Z",
    "all_day": false,
@@ -224,7 +224,7 @@
   {
    "id": "f1-2026-19",
    "kind": "f1",
-   "title": "F1 · Mexico City GP",
+   "title": "F1 · Mexico City Grand Prix",
    "start_at": "2026-11-01T20:00:00.000Z",
    "end_at": "2026-11-01T22:00:00.000Z",
    "all_day": false,
@@ -244,7 +244,7 @@
   {
    "id": "f1-2026-20",
    "kind": "f1",
-   "title": "F1 · Brazilian GP",
+   "title": "F1 · Brazilian Grand Prix",
    "start_at": "2026-11-08T17:00:00.000Z",
    "end_at": "2026-11-08T19:00:00.000Z",
    "all_day": false,
@@ -264,7 +264,7 @@
   {
    "id": "f1-2026-21",
    "kind": "f1",
-   "title": "F1 · Las Vegas GP",
+   "title": "F1 · Las Vegas Grand Prix",
    "start_at": "2026-11-22T04:00:00.000Z",
    "end_at": "2026-11-22T06:00:00.000Z",
    "all_day": false,
@@ -294,7 +294,7 @@
   {
    "id": "f1-2026-22",
    "kind": "f1",
-   "title": "F1 · Qatar GP",
+   "title": "F1 · Qatar Grand Prix",
    "start_at": "2026-11-29T16:00:00.000Z",
    "end_at": "2026-11-29T18:00:00.000Z",
    "all_day": false,
@@ -314,7 +314,7 @@
   {
    "id": "f1-2026-23",
    "kind": "f1",
-   "title": "F1 · Abu Dhabi GP",
+   "title": "F1 · Abu Dhabi Grand Prix",
    "start_at": "2026-12-06T13:00:00.000Z",
    "end_at": "2026-12-06T15:00:00.000Z",
    "all_day": false,
