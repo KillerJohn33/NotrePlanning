@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v34';
+  const APP_VERSION = 'v35';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -15,6 +15,8 @@
     pro: { label: 'Pro', icon: 'pro' },
     perso: { label: 'Perso', icon: 'perso' },
     commun: { label: 'Commun', icon: 'commun' },
+    // Programmes de sport à la télé, importés automatiquement (lecture seule, visibles par soi seul).
+    tv: { label: 'Sport TV', icon: 'tv' },
   };
   // Suggestions proposées à la création d'un événement : titre, type, durée (min) ou journée entière.
   const PRESETS = [
@@ -105,7 +107,7 @@
   const state = {
     view: savedUi.view || (narrowMq.matches ? 'agenda' : 'week'),
     who: savedUi.who || 'both',
-    cats: savedUi.cats || { pro: true, perso: true, commun: true },
+    cats: { pro: true, perso: true, commun: true, tv: true, ...savedUi.cats },
     cursor: startOfDay(new Date()),
     user: null, me: null, partner: null, household: null,
     remote: { me: new Set(), partner: new Set() },
@@ -128,7 +130,7 @@
     ['#dc2626', 'Rouge'], ['#db2777', 'Framboise'], ['#9333ea', 'Violet'], ['#92400e', 'Brun'],
     ['#1e3a8a', 'Marine'], ['#0e7490', 'Pétrole'], ['#4d7c0f', 'Olive'], ['#ca8a04', 'Moutarde'], ['#c026d3', 'Fuchsia'], ['#78716c', 'Taupe'],
   ];
-  const DEFAULT_EVENT_COLORS = { pro: '#475569', perso: '#16a34a', commun: '#9333ea' };
+  const DEFAULT_EVENT_COLORS = { pro: '#475569', perso: '#16a34a', commun: '#9333ea', tv: '#0e7490' };
   function hexToHsl(hex) {
     const n = parseInt(hex.slice(1), 16);
     const r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
@@ -180,7 +182,8 @@
     const shift = ev.is_mine && shiftIdOf(ev) && shiftTypes().find(t => t.id === shiftIdOf(ev));
     return shift?.color || eventColors()[ev.category];
   }
-  const canEdit = ev => ev.is_mine || ev.category === 'commun';
+  const isTv = ev => ev.category === 'tv';
+  const canEdit = ev => !isTv(ev) && (ev.is_mine || ev.category === 'commun');
   const isMasked = ev => !ev.is_mine && ev.is_private;
   const splitLanes = () => !!state.partner && state.who === 'both';
 
@@ -344,7 +347,7 @@
       import_key: SHIFT_PREFIX + type.id,
     };
   }
-  const iconOf = (ev, start) => (isPerm(ev) ? ic('perm', 'i-perm')
+  const iconOf = (ev, start) => (isTv(ev) ? ic('tv') : isPerm(ev) ? ic('perm', 'i-perm')
     : ic(isRemoteWork(ev, start) ? 'laptop' : shiftIdOf(ev) ? 'clock'
       : (!isMasked(ev) && presetIcon(ev.title)) || CATS[ev.category].icon));
 
@@ -508,6 +511,7 @@
     $$('#viewSeg [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
     renderWorkAlert();
     $$('#catChips [data-cat]').forEach(b => b.setAttribute('aria-pressed', String(!!state.cats[b.dataset.cat])));
+    $('#catChips [data-cat="tv"]').hidden = !usesTv();
 
     const whoSeg = $('#whoSeg');
     whoSeg.hidden = !state.partner;
@@ -637,7 +641,7 @@
     const short = g.height < 34;
     const time = `${fmtTime(o.start)} – ${fmtTime(o.end)}`;
     const tip = `${ev.title} · ${time}${state.partner ? ` · ${nameOf(ev)}` : ''}${ev.location ? ` · ${ev.location}` : ''}`;
-    return `<button class="ev ${isMasked(ev) ? 'is-masked' : ''} ${short ? 'is-short' : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}"
+    return `<button class="ev ${isMasked(ev) ? 'is-masked' : ''} ${isTv(ev) ? 'is-tv' : ''} ${short ? 'is-short' : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}"
       style="top:${g.top}px;height:${g.height - 2}px;left:calc(${g.left}% + 2px);width:calc(${g.width}% - 4px);--c:${esc(colorOf(ev))};--pc:${esc(personColorOf(ev))}"
       title="${esc(tip)}"><span class="ev-title">${iconOf(ev, o.start)} ${esc(ev.title)}</span><span class="ev-time">${time}</span></button>`;
   }
@@ -707,7 +711,7 @@
           <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}${birthdayBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, kindOn(addDays(d, -1)), kindOn(addDays(d, 1)), d, day === nDays, offTitle)}<div class="mo-events">`;
         for (const o of items.slice(0, max)) {
           const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
-          html += `<button class="mo-ev" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${isBirthday(o.ev) ? ic('cake') : '<i></i>'}<span>${time}${esc(o.ev.title)}</span></button>`;
+          html += `<button class="mo-ev ${isTv(o.ev) ? 'is-tv' : ''}" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}${o.ev.location ? ` · ${esc(o.ev.location)}` : ''}">${isBirthday(o.ev) ? ic('cake') : isTv(o.ev) ? ic('tv') : '<i></i>'}<span>${time}${esc(o.ev.title)}</span></button>`;
         }
         html += `</div>${items.length > max ? `<span class="mo-more">+${items.length - max} autre${items.length - max > 1 ? 's' : ''}</span>` : ''}</div>`;
       }
@@ -755,6 +759,11 @@
   // Étiquettes d'un événement (personne, type, permanence, télétravail, privé, répétition, âge).
   function eventTags(ev, start) {
     const tags = [];
+    if (isTv(ev)) {
+      tags.push(`<span class="tag tag-cat" data-cat="tv">${ic('tv')} ${esc(ev.sport || CATS.tv.label)}</span>`);
+      if (state.partner) tags.push(`<span class="tag">${ic('lock')} Visible par moi seul</span>`);
+      return tags;
+    }
     if (state.partner) tags.push(ev.category === 'commun' ? `<span class="tag">${ic('users')} Ensemble</span>` : `<span class="tag"><span class="dot" style="--c:${esc(personColorOf(ev))}"></span>${esc(nameOf(ev))}</span>`);
     const perm = isPerm(ev);
     const remote = isRemoteWork(ev, start);
@@ -779,8 +788,8 @@
       ? 'Journée'
       : `${o.start < d ? '…' : fmtTime(o.start)}<br>${o.end > dEnd ? '…' : fmtTime(o.end)}`;
     const tags = eventTags(ev, o.start);
-    if (ev.location) tags.push(`<span class="tag">${ic('pin')} ${esc(ev.location)}</span>`);
-    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
+    if (ev.location) tags.push(`<span class="tag">${ic(isTv(ev) ? 'tv' : 'pin')} ${esc(ev.location)}</span>`);
+    return `<button class="ag-ev ${isMasked(ev) ? 'is-masked' : ''} ${isTv(ev) ? 'is-tv' : ''} ${isOff(ev) ? `is-off${offClass(offKindOf(ev))}` : ''}" data-ev="${ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(ev))}">
       <span class="ag-time">${time}</span><span class="ag-bar"></span>
       <span class="ag-body"><strong>${esc(ev.title)}</strong><span class="ag-meta">${tags.join('')}</span></span></button>`;
   }
@@ -840,13 +849,16 @@
     $('#evViewBody').innerHTML = `
       <p class="ev-view-when">${ic('clock')} ${when}</p>
       <div class="ag-meta">${eventTags(ev, start).join('')}</div>
-      ${ev.location ? `<p class="ev-view-line">${ic('pin')} ${esc(ev.location)}</p>` : ''}
-      ${reminderLabel(ev) ? `<p class="ev-view-line">${ic('bell')} Rappel : ${reminderLabel(ev).toLowerCase()}</p>` : ''}
+      ${ev.location ? `<p class="ev-view-line">${ic(isTv(ev) ? 'tv' : 'pin')} ${esc(ev.location)}</p>` : ''}
+      ${isTv(ev) ? `<p class="ev-view-line">${ic('bell')} Rappel : ${tvReminderLabel()}</p>` : ''}
+      ${!isTv(ev) && reminderLabel(ev) ? `<p class="ev-view-line">${ic('bell')} Rappel : ${reminderLabel(ev).toLowerCase()}</p>` : ''}
       ${ev.notes ? `<p class="ev-view-notes">${esc(ev.notes)}</p>` : ''}
+      ${isTv(ev) ? '<p class="owner-note">Programme trouvé automatiquement dans le guide TV, à titre d’info. Réglages → Sport à la télé.</p>' : ''}
       ${ev.is_mine ? '' : `<p class="owner-note">${isMasked(ev) ? `Créneau privé de ${esc(nameOf(ev))}.`
         : `Ajouté par ${esc(nameOf(ev))}${canEdit(ev) ? '' : ' (lecture seule)'}.`}</p>`}`;
     $('#evViewEdit').hidden = !canEdit(ev);
-    $('#evViewCopy').hidden = isMasked(ev); // un créneau privé de l'autre n'a rien à recopier
+    $('#evViewCopy').hidden = isMasked(ev) || isTv(ev); // un créneau privé de l'autre n'a rien à recopier
+    $('#evViewHide').hidden = !isTv(ev);
   }
 
   // Dupliquer : le formulaire s'ouvre pré-rempli (date de l'occurrence choisie), sans répétition.
@@ -1337,6 +1349,7 @@
         <p class="muted">Affichées dans l’agenda d’après le calendrier officiel de l’Éducation nationale.</p>
       </section>
       ${notifSection()}
+      ${tvSection()}
       <section class="set-section"><h3>Planning partagé</h3>${share}</section>
       <section class="set-section">
         <h3>Types d’horaires</h3>
@@ -1429,6 +1442,40 @@
   async function testPush() {
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification('Notre Planning', { body: 'Les notifications fonctionnent sur cet appareil ✓', icon: 'icon-192.png' });
+  }
+
+  /* Sport à la télé : mots-clés cherchés dans le guide des programmes ------------------ */
+  const TV_REMINDERS = [[-1, 'Aucun rappel'], [0, 'Au début'], [5, '5 min avant'], [15, '15 min avant'], [30, '30 min avant'], [60, '1 h avant']];
+  const tvPrefs = () => store.getTvPrefs?.() || { keywords: [], channels: [], live_only: true, reminder: 15 };
+  const usesTv = () => tvPrefs().keywords.length > 0 || state.events.some(isTv);
+  const tvReminderLabel = () => {
+    const r = tvPrefs().reminder;
+    return (TV_REMINDERS.find(([v]) => v === r)?.[1] || `${r} min avant`).toLowerCase()
+      + (store.mode === 'demo' || !pushSub ? ' (si les notifications sont activées)' : '');
+  };
+  function tvSection() {
+    const p = tvPrefs();
+    const status = p.last_error ? `Dernière recherche en échec : ${esc(p.last_error)}`
+      : p.last_run ? `Dernière recherche : ${fmt(p.last_run, { weekday: 'long', day: 'numeric', month: 'long' })} à ${fmtTime(p.last_run)} · ${p.last_count ?? 0} programme(s) trouvé(s).`
+      : p.keywords.length && store.mode !== 'demo' ? 'Recherche en attente (d’ici une dizaine de minutes).' : '';
+    return `<section class="set-section">
+      <h3>Sport à la télé</h3>
+      <p class="muted">Les matchs et courses qui t’intéressent sont ajoutés tout seuls à ton agenda d’après le programme TV
+        (chaînes françaises, environ 5 jours à l’avance, mis à jour deux fois par jour). Ils sont visibles par toi seul${state.partner ? ` (pas par ${esc(state.partner.display_name)})` : ''}
+        et s’affichent en discret, à titre d’info.</p>
+      <form id="tvForm" class="auth-form">
+        <label class="field">Mots-clés, un par ligne (équipe, compétition, sport)
+          <textarea class="input" name="keywords" rows="4" placeholder="PSG&#10;Ligue des champions&#10;XV de France&#10;Formule 1&#10;Roland-Garros">${esc(p.keywords.join('\n'))}</textarea></label>
+        <label class="field">Chaînes (facultatif, séparées par des virgules ; vide = toutes)
+          <input class="input" name="channels" maxlength="600" placeholder="TF1, France 2, Canal+, beIN Sports" value="${esc(p.channels.join(', '))}"></label>
+        <label class="check"><input type="checkbox" name="live_only" ${p.live_only !== false ? 'checked' : ''}> Directs seulement (sans rediffusions ni résumés)</label>
+        <label class="field notif-delay">Me rappeler
+          <select name="reminder">${TV_REMINDERS.map(([v, l]) => `<option value="${v}"${p.reminder === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
+        </label>
+        ${status ? `<p class="muted">${status}</p>` : ''}
+        <div><button class="btn primary">Enregistrer</button></div>
+      </form>
+    </section>`;
   }
 
   function notifSection() {
@@ -1569,7 +1616,7 @@
 
   // Sauvegarde complète (restaurable) : tes événements, télétravail, listes et réglages.
   async function exportJson() {
-    const mine = (await allEvents()).filter(e => e.is_mine);
+    const mine = (await allEvents()).filter(e => e.is_mine && !isTv(e));
     const data = {
       app: 'Notre Planning', version: 1, exported_at: new Date().toISOString(),
       profile: {
@@ -1614,7 +1661,7 @@
     if (data?.app !== 'Notre Planning' || !Array.isArray(data.events)) throw new Error('Ce fichier n’est pas une sauvegarde de Notre Planning.');
     const sig = e => `${e.title}|${e.start_at}|${e.end_at}`;
     const seen = new Set((await allEvents()).filter(e => e.is_mine).map(sig));
-    const fresh = data.events.filter(e => e?.title && e.start_at && e.end_at && CATS[e.category] && !seen.has(sig(e)));
+    const fresh = data.events.filter(e => e?.title && e.start_at && e.end_at && CATS[e.category] && !isTv(e) && !seen.has(sig(e)));
     const items = (data.list_items || []).filter(i => i?.text && LISTS[i.list]);
     const knownItems = new Set(store.getListItems().map(i => `${i.list}|${i.text}`));
     const newItems = items.filter(i => !knownItems.has(`${i.list}|${i.text}`));
@@ -1734,6 +1781,21 @@
       });
     } else if (form.id === 'shiftForm') {
       await saveShiftTypes(form);
+    } else if (form.id === 'tvForm') {
+      const f = form.elements;
+      const lines = v => [...new Set(v.split(/[\n,;]+/).map(x => x.trim().slice(0, 60)).filter(Boolean))];
+      const keywords = lines(f.keywords.value).slice(0, 30);
+      await withBusy($('button:not([type])', form), async () => {
+        await store.saveTvPrefs({
+          keywords, channels: lines(f.channels.value).slice(0, 40),
+          live_only: f.live_only.checked, reminder: Number(f.reminder.value),
+        });
+        toast(keywords.length
+          ? (store.mode === 'demo' ? 'Enregistré (en démo, les programmes restent des exemples)' : 'Enregistré : les programmes arrivent d’ici une dizaine de minutes')
+          : 'Enregistré : plus aucun programme ne sera ajouté');
+        renderSettings();
+        render();
+      });
     } else if (form.id === 'notifForm') {
       const f = form.elements;
       await withBusy($('button:not([type])', form), async () => {
@@ -2266,6 +2328,12 @@
       fillEventForm(viewing.ev, viewing.occ);
     };
     $('#evViewCopy').onclick = duplicateEvent;
+    $('#evViewHide').onclick = () => withBusy($('#evViewHide'), async () => {
+      await store.hideTvEvent(viewing.ev.id);
+      evViewDlg.close();
+      toast('Programme masqué');
+      load();
+    });
 
     for (const dlg of [evDlg, setDlg, impDlg, rmDlg, dayDlg, searchDlg, evViewDlg]) {
       dlg.addEventListener('click', e => {

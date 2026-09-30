@@ -10,6 +10,8 @@ rules_version = '2';
 //   eventSecrets/{id}    détails des événements privés, lisibles par leur seul auteur
 //   remoteDays/{uid}     jours de télétravail
 //   listItems/{id}       liste partagée (courses, tâches)
+//   tvPrefs/{uid}        sport à la télé : mots-clés, chaînes, rappel (visible par soi seul)
+//   tvEvents/{id}        programmes trouvés par notifier/sport-tv.js (visibles par leur seul propriétaire)
 //   pushSubs/{id}        abonnements aux notifications d'un appareil (lus par la tâche d'envoi)
 //   notifMeta/…          état de la tâche d'envoi (accès serveur uniquement)
 service cloud.firestore {
@@ -149,6 +151,25 @@ service cloud.firestore {
         && (resource.data.owner_id == uid() || isMutualPartner(resource.data.owner_id));
       allow delete: if signedIn()
         && (resource.data.owner_id == uid() || isMutualPartner(resource.data.owner_id));
+    }
+
+    // Sport à la télé : strictement personnel, le partenaire n'y a jamais accès.
+    // last_run, last_count et last_error sont écrits par la tâche GitHub Actions.
+    match /tvPrefs/{userId} {
+      allow read, delete: if signedIn() && userId == uid();
+      allow create, update: if signedIn() && userId == uid()
+        && request.resource.data.keys().hasOnly(['keywords', 'channels', 'live_only', 'reminder', 'hidden',
+                                                 'updated_at', 'last_run', 'last_count', 'last_error'])
+        && request.resource.data.keywords is list && request.resource.data.keywords.size() <= 30
+        && request.resource.data.channels is list && request.resource.data.channels.size() <= 40
+        && request.resource.data.live_only is bool
+        && request.resource.data.reminder is int && request.resource.data.reminder >= -1 && request.resource.data.reminder <= 1440
+        && (request.resource.data.get('hidden', null) == null
+            || (request.resource.data.hidden is list && request.resource.data.hidden.size() <= 500));
+    }
+    // Programmes créés par la tâche d'import ; on peut seulement les lire et en masquer (supprimer).
+    match /tvEvents/{eventId} {
+      allow read, delete: if signedIn() && resource.data.owner_id == uid();
     }
 
     // Abonnements aux notifications : chacun gère uniquement ceux de ses appareils.

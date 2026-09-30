@@ -6,6 +6,15 @@
   const EVENT_FIELDS = ['title', 'notes', 'location', 'start_at', 'end_at', 'all_day', 'category',
     'is_private', 'recurrence', 'recurrence_until', 'import_key', 'exdates', 'color', 'reminder'];
   const pick = ev => Object.fromEntries(EVENT_FIELDS.map(k => [k, ev[k] ?? null]));
+  // Sport à la télé : réglages par défaut, et programme (tvEvents) présenté comme un événement
+  // en lecture seule, de type « tv », visible par son seul propriétaire.
+  const TV_DEFAULTS = { keywords: [], channels: [], live_only: true, reminder: 15, hidden: [] };
+  const tvRow = t => ({
+    id: t.id, owner_id: t.owner_id, is_mine: true, category: 'tv', title: t.title,
+    location: t.channel || null, notes: t.desc || null, sport: t.sport || null,
+    start_at: t.start_at, end_at: t.end_at, all_day: false, is_private: false,
+    recurrence: 'none', recurrence_until: null, import_key: null,
+  });
 
   /* Firebase (Auth + Firestore). Les données des deux personnes sont écoutées en
      temps réel et gardées en mémoire ; listEvents filtre ce cache. Voir firestore.rules. */
@@ -22,6 +31,7 @@
     const inviteRef = code => db.collection('invites').doc(code);
     const secretRef = id => db.collection('eventSecrets').doc(id);
     const remoteRef = id => db.collection('remoteDays').doc(id);
+    const tvPrefsRef = id => db.collection('tvPrefs').doc(id);
     const toMap = snap => new Map(snap.docs.map(d => [d.id, { id: d.id, ...d.data() }]));
     const onErr = err => console.error(err);
 
@@ -33,6 +43,7 @@
     let myEvents = new Map(), partnerEvents = new Map(), secrets = new Map();
     let myRemote = [], partnerRemote = [];
     let myItems = new Map(), partnerItems = new Map();
+    let tvEvents = new Map(), tvPrefs = null;
     let baseUnsubs = [], partnerUnsub = null, partnerDataUnsubs = null, inviteUnsub = null;
     let watchedPartner = null, watchedInvite = null;
     let pendingName = '';
@@ -47,6 +58,7 @@
       watchedPartner = watchedInvite = null;
       me = partner = invite = null;
       myEvents = new Map(); secrets = new Map(); myRemote = []; myItems = new Map();
+      tvEvents = new Map(); tvPrefs = null;
     }
 
     function watchMine() {
@@ -56,6 +68,8 @@
         db.collection('eventSecrets').where('owner_id', '==', uid).onSnapshot(s => { secrets = toMap(s); emit(); }, onErr),
         remoteRef(uid).onSnapshot(s => { myRemote = (s.exists && s.data().dates) || []; emit(); }, onErr),
         db.collection('listItems').where('owner_id', '==', uid).onSnapshot(s => { myItems = toMap(s); emit(); }, onErr),
+        db.collection('tvEvents').where('owner_id', '==', uid).onSnapshot(s => { tvEvents = toMap(s); emit(); }, onErr),
+        tvPrefsRef(uid).onSnapshot(s => { tvPrefs = s.exists ? s.data() : null; emit(); }, onErr),
       );
     }
 
@@ -228,6 +242,7 @@
         };
         myEvents.forEach(e => add(e, true));
         if (isMutual()) partnerEvents.forEach(e => add(e, false));
+        tvEvents.forEach(t => { if (t.start_at < toIso && t.end_at > fromIso) rows.push(tvRow(t)); });
         return rows;
       },
       async saveEvent(ev) {
@@ -260,6 +275,23 @@
       // Jours de télétravail : liste de dates "AAAA-MM-JJ" par personne.
       async getRemoteDays() {
         return { me: new Set(myRemote), partner: new Set(isMutual() ? partnerRemote : []) };
+      },
+      // Sport à la télé (tvPrefs/{uid}) : les programmes sont cherchés par notifier/sport-tv.js.
+      getTvPrefs() {
+        const p = { ...TV_DEFAULTS, ...(tvPrefs || {}) };
+        return { ...p, last_run: tvPrefs?.last_run?.toDate?.() || null, saved: !!tvPrefs };
+      },
+      async saveTvPrefs({ keywords, channels, live_only, reminder }) {
+        await tvPrefsRef(uid).set({
+          keywords, channels, live_only, reminder, updated_at: FieldValue.serverTimestamp(),
+        }, { merge: true });
+      },
+      // Masquer un programme : il est effacé et ne sera pas réimporté.
+      async hideTvEvent(id) {
+        const batch = db.batch();
+        batch.set(tvPrefsRef(uid), { ...TV_DEFAULTS, ...(tvPrefs || {}), hidden: FieldValue.arrayUnion(id) }, { merge: true });
+        batch.delete(db.collection('tvEvents').doc(id));
+        await batch.commit();
       },
       async setRemoteDays(dates) { await remoteRef(uid).set({ dates }); },
       // Abonnement aux notifications de cet appareil (lu par la tâche d'envoi GitHub Actions).
@@ -380,6 +412,15 @@
           partner: { id: 'partner', display_name: 'Ma compagne', color: '#e8590c', household_id: 'demo' },
         },
         household: { id: 'demo', invite_code: 'DEMO2026' },
+        tv: {
+          prefs: { ...TV_DEFAULTS, keywords: ['Ligue des champions', 'Top 14'], last_count: 2 },
+          events: [
+            { id: uid(), owner_id: 'me', title: 'Football — Ligue des champions : PSG / Arsenal', channel: 'Canal+',
+              sport: 'Football', start_at: at(2, 21), end_at: at(2, 23) },
+            { id: uid(), owner_id: 'me', title: 'Rugby — Top 14 : Toulouse / La Rochelle', channel: 'Canal+ Sport',
+              sport: 'Rugby', start_at: at(5, 21, 5), end_at: at(5, 23) },
+          ],
+        },
         remote: { me: [day(2), day(9)], partner: [day(4)] },
         items: [
           { id: uid(), owner_id: 'me', list: 'courses', text: 'Lait', done: false, assignee: null, due: null, created_at: 1 },
@@ -452,7 +493,8 @@
               notes: hide ? null : e.notes,
               location: hide ? null : e.location,
             };
-          });
+          })
+          .concat((db.tv?.events || []).filter(t => new Date(t.start_at) < to && new Date(t.end_at) > from).map(tvRow));
       },
       async saveEvent(ev) {
         if (ev.id) {
@@ -478,6 +520,19 @@
       },
       async setRemoteDays(dates) {
         db.remote = { ...db.remote, me: dates };
+        persist();
+      },
+      getTvPrefs() {
+        return { ...TV_DEFAULTS, ...(db.tv?.prefs || {}), last_run: null, saved: !!db.tv?.prefs, demo: true };
+      },
+      async saveTvPrefs(p) {
+        db.tv ||= { events: [] };
+        db.tv.prefs = { ...TV_DEFAULTS, ...db.tv.prefs, ...p };
+        persist();
+      },
+      async hideTvEvent(id) {
+        if (!db.tv) return;
+        db.tv.events = db.tv.events.filter(t => t.id !== id);
         persist();
       },
       countImported(key, from, to) {
