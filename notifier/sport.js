@@ -91,7 +91,7 @@ async function f1() {
       ].filter(Boolean);
       out.push({
         id: `f1-${r.season}-${r.round}`, kind: 'f1',
-        title: `F1 · ${r.raceName.replace(/ Grand Prix$/, '')} GP`,
+        title: `F1 · ${r.raceName}`,
         start_at: start.toISOString(),
         end_at: new Date(start.getTime() + 2 * HOUR).toISOString(),
         all_day: !r.time,
