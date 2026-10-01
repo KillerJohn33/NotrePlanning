@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v43';
+  const APP_VERSION = 'v44';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -549,6 +549,20 @@
       state.monthPrepended = true;
       load().finally(() => { monthExtending = false; });
     }
+  }
+
+  /* Comportement d'application sur écran tactile : pas de zoom par pincement (iOS ignore
+     user-scalable=no, d'où les gestes bloqués ici) ni de menu contextuel à l'appui long,
+     sauf dans les champs de saisie et les zones de texte à copier. */
+  const touchDevice = matchMedia('(pointer: coarse)').matches;
+  if (touchDevice) {
+    for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+      document.addEventListener(type, e => e.preventDefault(), { passive: false });
+    }
+    document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    document.addEventListener('contextmenu', e => {
+      if (!e.target.closest('input, textarea, select, [contenteditable], .ev-view-notes, .code-box')) e.preventDefault();
+    });
   }
 
   /* Transitions ---------------------------------------------------------------------
