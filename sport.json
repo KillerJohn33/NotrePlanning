@@ -1,16 +1,6 @@
 {
- "updated_at": "2026-09-30T13:59:20.697Z",
+ "updated_at": "2026-10-01T05:55:08.053Z",
  "events": [
-  {
-   "id": "barca-401906710",
-   "kind": "barca",
-   "title": "FC Basel – FC Barcelone (2-5)",
-   "start_at": "2026-08-16T14:30:00.000Z",
-   "end_at": "2026-08-16T16:30:00.000Z",
-   "all_day": false,
-   "location": "St. Jakob Park",
-   "detail": "Match amical"
-  },
   {
    "id": "f1-2026-12",
    "kind": "f1",
