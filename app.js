@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v47';
+  const APP_VERSION = 'v48';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
