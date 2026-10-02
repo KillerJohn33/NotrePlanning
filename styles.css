@@ -988,14 +988,15 @@ dialog.is-closing::backdrop { animation: fade-out .17s ease-in forwards; }
   .mo-cell { position: relative; padding: 3px 2px 0; gap: 0; overflow: hidden; }
   .mo-top { flex-direction: column; align-items: center; gap: 0; width: 100%; }
   .mo-num { width: 20px; height: 20px; font-size: 12px; }
-  .mo-badges { justify-content: center; gap: 2px; height: 11px; }
+  .mo-badges { justify-content: center; gap: 2px; height: 10px; }
   .mo-badges .i { width: 10px; height: 10px; }
   .mo-badges .dot { width: 3px; height: 3px; }
   .mo-badges .tt, .mo-badges .pm, .mo-badges .bd { gap: 1px; font-size: 10px; }
-  .mo-events { margin-top: 4px; flex-wrap: nowrap; overflow: hidden; gap: 2px; }
+  .mo-events { margin-top: 3px; flex-wrap: nowrap; overflow: hidden; gap: 2px; align-items: center; height: 10px; }
+  .mo-ev { line-height: 0; }
   .mo-ev i { width: 6px; height: 6px; }
   .mo-ev > .i { width: 9px; height: 9px; }
-  .mo-cell > .off-bar { position: absolute; left: 0; right: 0; bottom: 3px; margin: 0; height: 14px; font-size: 9.5px; }
+  .mo-cell > .off-bar { position: absolute; left: 0; right: 0; bottom: 2px; margin: 0; height: 12px; font-size: 9px; }
   .mo-cell > .off-bar.is-first { left: 2px; }
   .mo-cell > .off-bar.is-last { right: 2px; }
 }

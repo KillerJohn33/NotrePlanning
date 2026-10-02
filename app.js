@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v46';
+  const APP_VERSION = 'v47';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -2583,6 +2583,13 @@
         bar.innerHTML = `${ic('repeat')}<span>Nouvelle version disponible.</span>
           <button class="btn primary" type="button">Mettre à jour</button>`;
         bar.querySelector('button').onclick = () => location.reload();
+        // Mise à jour discrète : dès que l'app passe en arrière-plan (ou tout de suite si elle
+        // y est déjà), elle se recharge, sauf si une fenêtre est ouverte (saisie en cours).
+        const quietReload = () => {
+          if (document.hidden && !document.querySelector('dialog[open]')) location.reload();
+        };
+        quietReload();
+        document.addEventListener('visibilitychange', quietReload);
       });
     }
   }
