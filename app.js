@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v45';
+  const APP_VERSION = 'v46';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -792,7 +792,7 @@
     const prevHeight = main.scrollHeight;
     const occ = visibleOccurrences(from, to);
     const today = new Date();
-    const max = narrowMq.matches ? 6 : 3;
+    const max = narrowMq.matches ? 5 : 3; // téléphone : une seule rangée de points
 
     // Occurrences rangées par jour (un événement sur plusieurs jours apparaît chaque jour).
     const byDay = new Map();

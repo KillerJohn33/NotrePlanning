@@ -982,12 +982,20 @@ dialog.is-closing::backdrop { animation: fade-out .17s ease-in forwards; }
    des événements. La rangée des badges garde sa hauteur pour que les points restent alignés. */
 .mo-badges { display: inline-flex; align-items: center; gap: 4px; }
 @media (max-width: 700px) {
-  .mo-cell { padding: 4px 2px 3px; }
-  .mo-top { flex-direction: column; align-items: center; gap: 1px; width: 100%; }
-  .mo-num { width: 22px; height: 22px; font-size: 12px; }
-  .mo-badges { justify-content: center; gap: 3px; min-height: 12px; }
-  .mo-badges .i { width: 11px; height: 11px; }
-  .mo-badges .dot { width: 4px; height: 4px; }
-  .mo-badges .tt, .mo-badges .pm { gap: 1px; }
-  .mo-events { margin-top: 5px; }
+  /* Toutes les cases ont la même hauteur (62 px, comme avant) : le contenu est compact et
+     le ruban des congés est posé en bas de la case au lieu d'ajouter une ligne. */
+  .mo-grid { grid-auto-rows: 62px; }
+  .mo-cell { position: relative; padding: 3px 2px 0; gap: 0; overflow: hidden; }
+  .mo-top { flex-direction: column; align-items: center; gap: 0; width: 100%; }
+  .mo-num { width: 20px; height: 20px; font-size: 12px; }
+  .mo-badges { justify-content: center; gap: 2px; height: 11px; }
+  .mo-badges .i { width: 10px; height: 10px; }
+  .mo-badges .dot { width: 3px; height: 3px; }
+  .mo-badges .tt, .mo-badges .pm, .mo-badges .bd { gap: 1px; font-size: 10px; }
+  .mo-events { margin-top: 4px; flex-wrap: nowrap; overflow: hidden; gap: 2px; }
+  .mo-ev i { width: 6px; height: 6px; }
+  .mo-ev > .i { width: 9px; height: 9px; }
+  .mo-cell > .off-bar { position: absolute; left: 0; right: 0; bottom: 3px; margin: 0; height: 14px; font-size: 9.5px; }
+  .mo-cell > .off-bar.is-first { left: 2px; }
+  .mo-cell > .off-bar.is-last { right: 2px; }
 }
