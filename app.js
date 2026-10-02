@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v44';
+  const APP_VERSION = 'v45';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -824,7 +824,7 @@
         const school = schoolHolidayOf(d);
         const tip = [hol, school && `${school.name} (zone ${schoolZone})`].filter(Boolean).join(' · ');
         html += `<div class="mo-cell ${sameDay(d, today) ? 'is-today' : ''} ${off ? `is-off${offClass(off)}` : ''} ${hol ? 'is-holiday' : ''} ${school ? 'is-school' : ''}" data-goto="${toDateInput(d)}"${tip ? ` title="${esc(tip)}"` : ''}>
-          <div class="mo-top"><span class="mo-num">${day}</span>${remoteBadge(d)}${permBadge(d, items)}${birthdayBadge(d, items)}</div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, kindOn(addDays(d, -1)), kindOn(addDays(d, 1)), d, day === nDays, offTitle)}<div class="mo-events">`;
+          <div class="mo-top"><span class="mo-num">${day}</span><span class="mo-badges">${remoteBadge(d)}${permBadge(d, items)}${birthdayBadge(d, items)}</span></div>${hol ? `<span class="hol">${esc(hol)}</span>` : ''}${offRibbon(off, kindOn(addDays(d, -1)), kindOn(addDays(d, 1)), d, day === nDays, offTitle)}<div class="mo-events">`;
         for (const o of items.slice(0, max)) {
           const time = o.ev.all_day || o.start < d ? '' : `<b>${fmtTime(o.start)}</b> `;
           html += `<button class="mo-ev ${isSport(o.ev) ? 'is-info' : ''}" data-ev="${o.ev.id}" data-occ="${o.start.getTime()}" style="--c:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)}">${isBirthday(o.ev) ? ic('cake') : isSport(o.ev) ? iconOf(o.ev, o.start) : '<i></i>'}<span>${time}${esc(o.ev.title)}</span></button>`;

@@ -976,3 +976,18 @@ dialog.is-closing::backdrop { animation: fade-out .17s ease-in forwards; }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .toast:popover-open { animation: toast-in .22s cubic-bezier(.22, .9, .3, 1); }
 @media (prefers-reduced-motion: reduce) { .toast:popover-open { animation: none; } }
+
+/* Vue mois : badges (télétravail, permanence, anniversaire) à côté du numéro sur ordinateur ;
+   sur téléphone, numéro centré en haut de la case, badges en petit dessous, puis les points
+   des événements. La rangée des badges garde sa hauteur pour que les points restent alignés. */
+.mo-badges { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 700px) {
+  .mo-cell { padding: 4px 2px 3px; }
+  .mo-top { flex-direction: column; align-items: center; gap: 1px; width: 100%; }
+  .mo-num { width: 22px; height: 22px; font-size: 12px; }
+  .mo-badges { justify-content: center; gap: 3px; min-height: 12px; }
+  .mo-badges .i { width: 11px; height: 11px; }
+  .mo-badges .dot { width: 4px; height: 4px; }
+  .mo-badges .tt, .mo-badges .pm { gap: 1px; }
+  .mo-events { margin-top: 5px; }
+}
