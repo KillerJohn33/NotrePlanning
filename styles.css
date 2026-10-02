@@ -982,9 +982,9 @@ dialog.is-closing::backdrop { animation: fade-out .17s ease-in forwards; }
    des événements. La rangée des badges garde sa hauteur pour que les points restent alignés. */
 .mo-badges { display: inline-flex; align-items: center; gap: 4px; }
 @media (max-width: 700px) {
-  /* Cases plus hautes (76 px), toutes identiques. Chaque case réserve la place du ruban des
-     congés entre les icônes et les points : le ruban garde son allure d'origine (16 px,
-     continu d'une case à l'autre) et les points restent alignés sur toute la semaine. */
+  /* Cases plus hautes (76 px), toutes identiques. Les points (et icônes d'anniversaire et de
+     sport) sont au milieu de la case, le ruban des congés (allure d'origine, 16 px, continu
+     d'une case à l'autre) en bas : tout reste aligné sur la semaine. */
   .mo-grid { grid-auto-rows: 76px; }
   .mo-cell { position: relative; padding: 5px 2px 0; gap: 0; overflow: hidden; }
   .mo-top { flex-direction: column; align-items: center; gap: 1px; width: 100%; }
@@ -993,12 +993,12 @@ dialog.is-closing::backdrop { animation: fade-out .17s ease-in forwards; }
   .mo-badges .i { width: 11px; height: 11px; }
   .mo-badges .dot { width: 4px; height: 4px; }
   .mo-badges .tt, .mo-badges .pm, .mo-badges .bd { gap: 1px; font-size: 10px; }
-  .mo-events { position: absolute; left: 2px; right: 2px; top: 62px; margin: 0; flex-wrap: nowrap; overflow: hidden;
+  .mo-events { position: absolute; left: 2px; right: 2px; top: 41px; margin: 0; flex-wrap: nowrap; overflow: hidden;
     gap: 3px; align-items: center; height: 10px; }
   .mo-ev { line-height: 0; }
   .mo-ev i { width: 6px; height: 6px; }
   .mo-ev > .i { width: 10px; height: 10px; }
-  .mo-cell > .off-bar { position: absolute; left: 0; right: 0; top: 42px; margin: 0; height: 16px; font-size: 10px; padding: 0 4px; }
+  .mo-cell > .off-bar { position: absolute; left: 0; right: 0; top: 56px; margin: 0; height: 16px; font-size: 10px; padding: 0 4px; }
   .mo-cell > .off-bar.is-first { left: 2px; }
   .mo-cell > .off-bar.is-last { right: 2px; }
 }
