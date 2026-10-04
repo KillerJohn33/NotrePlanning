@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-01T05:55:08.053Z",
+ "updated_at": "2026-10-04T11:16:31.997Z",
  "events": [
   {
    "id": "f1-2026-12",
@@ -205,9 +205,9 @@
    "id": "barca-401882822",
    "kind": "barca",
    "title": "FC Barcelone – Alavés",
-   "start_at": "2026-11-01T20:00:00.000Z",
-   "end_at": "2026-11-01T22:00:00.000Z",
-   "all_day": true,
+   "start_at": "2026-10-31T20:00:00.000Z",
+   "end_at": "2026-10-31T22:00:00.000Z",
+   "all_day": false,
    "location": "Spotify Camp Nou",
    "detail": "LaLiga"
   },
