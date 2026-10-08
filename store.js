@@ -273,7 +273,11 @@
       async getRemoteDays() {
         return { me: new Set(myRemote), partner: new Set(isMutual() ? partnerRemote : []) };
       },
-      async setRemoteDays(dates) { await remoteRef(uid).set({ dates }); },
+      async setRemoteDays(dates) {
+        await remoteRef(uid).set({ dates });
+        myRemote = dates; // affichage immédiat
+        emit();
+      },
       // Abonnement aux notifications de cet appareil (lu par la tâche d'envoi GitHub Actions).
       async savePushSub(id, subscription, ua) {
         await db.collection('pushSubs').doc(id).set({ owner_id: uid, subscription, ua, created_at: FieldValue.serverTimestamp() });

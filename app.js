@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v49';
+  const APP_VERSION = 'v50';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -994,6 +994,7 @@
     const ev = state.events.find(e => e.id === id) || searchPool.find(e => e.id === id);
     if (!ev) return;
     viewing = { ev, occ: occMs ? new Date(Number(occMs)) : null };
+    workMove = null;
     renderEventView();
     openDlg(evViewDlg);
   }
@@ -1021,12 +1022,106 @@
       ${!isSport(ev) && reminderLabel(ev) ? `<p class="ev-view-line">${ic('bell')} Rappel : ${reminderLabel(ev).toLowerCase()}</p>` : ''}
       ${ev.notes ? `<p class="ev-view-notes">${esc(ev.notes)}</p>` : ''}
       ${isSport(ev) ? `<p class="owner-note">À titre d’info, d’après le calendrier ${esc(SPORTS[ev.sport_kind].label)}.${ev.all_day ? ' Horaire pas encore fixé.' : ''} Réglages → Sport à suivre.</p>` : ''}
+      ${workTools(ev, start)}
       ${ev.is_mine ? '' : `<p class="owner-note">${isMasked(ev) ? `Créneau privé de ${esc(nameOf(ev))}.`
         : `Ajouté par ${esc(nameOf(ev))}${canEdit(ev) ? '' : ' (lecture seule)'}.`}</p>`}`;
     $('#evViewEdit').hidden = !canEdit(ev);
     $('#evViewDelete').hidden = !canEdit(ev);
     showDelChoice(false);
     $('#evViewCopy').hidden = isMasked(ev) || isSport(ev); // un créneau privé de l'autre n'a rien à recopier
+  }
+
+  /* Créneau de travail (le sien) : télétravail et permanence modifiables depuis la fiche ------
+     Télétravail : interrupteur pour ce jour, ou déplacement vers une autre date.
+     Permanence : déplacement vers une autre date ; si ce jour-là a déjà un créneau de
+     travail, les deux s'échangent (intitulé et durée), sinon le créneau est déplacé. */
+  const isWorkSlot = ev => ev.is_mine && ev.category === 'pro' && !ev.all_day && !isSport(ev);
+  let workMove = null; // 'remote' | 'perm' : sélecteur de date ouvert
+  function workTools(ev, start) {
+    if (!isWorkSlot(ev)) return '';
+    const key = toDateInput(start);
+    const remote = state.remote.me.has(key);
+    const perm = isPerm(ev);
+    const picker = workMove ? `<div class="work-move">
+        <label class="field">${workMove === 'remote' ? 'Mettre le télétravail le' : 'Mettre la permanence le'}
+          <input type="date" id="workMoveDate" value="${toDateInput(addDays(start, 1))}"></label>
+        <div class="btn-row"><button type="button" class="btn" data-work="cancel">Annuler</button>
+          <button type="button" class="btn primary" data-work="move-ok">Déplacer</button></div></div>` : '';
+    return `<div class="work-tools">
+      <button type="button" class="work-toggle" data-work="remote" aria-pressed="${remote}">
+        ${ic('laptop')}<span>Télétravail ce jour</span><span class="switch" aria-hidden="true"></span></button>
+      <div class="work-actions">
+        ${remote ? `<button type="button" class="btn" data-work="move-remote">${ic('laptop')} Déplacer le télétravail</button>` : ''}
+        ${perm ? `<button type="button" class="btn" data-work="move-perm">${ic('perm')} Déplacer la permanence</button>` : ''}
+      </div>${picker}</div>`;
+  }
+  // Remplace une occurrence (série : date retirée + événement à part ; sinon modification).
+  async function replaceOccurrence(ev, occStart, changes) {
+    const dur = new Date(ev.end_at) - new Date(ev.start_at);
+    const s = changes.start || occStart;
+    const row = { ...ev, title: changes.title ?? ev.title, start_at: s.toISOString(),
+      end_at: new Date(s.getTime() + (changes.dur ?? dur)).toISOString() };
+    if (ev.recurrence && ev.recurrence !== 'none') {
+      await store.saveEvent({ ...row, id: null, recurrence: 'none', recurrence_until: null, exdates: null });
+      await store.saveEvent(withExdate(ev, occStart));
+    } else {
+      await store.saveEvent(row);
+    }
+  }
+  // Créneau de travail (le sien) d'une date donnée, hors de la période affichée si besoin.
+  async function workSlotOn(date) {
+    const rows = await store.listEvents(date, addDays(date, 1));
+    return rows.filter(isWorkSlot).flatMap(e => occurrences(e, date, addDays(date, 1)))
+      .filter(o => sameDay(o.start, date)).sort((a, b) => a.start - b.start)[0] || null;
+  }
+  async function onWorkTool(act) {
+    const { ev, occ } = viewing;
+    const start = occ || new Date(ev.start_at);
+    const key = toDateInput(start);
+    if (act === 'move-remote' || act === 'move-perm') { workMove = act.slice(5); return renderEventView(); }
+    if (act === 'cancel') { workMove = null; return renderEventView(); }
+    const btn = $(`[data-work="${act}"]`, evViewDlg);
+    if (act === 'remote') {
+      const dates = new Set(state.remote.me);
+      dates.has(key) ? dates.delete(key) : dates.add(key);
+      return withBusy(btn, async () => {
+        await store.setRemoteDays([...dates].sort());
+        state.remote = await store.getRemoteDays();
+        toast(dates.has(key) ? 'Télétravail ajouté ce jour' : 'Télétravail retiré ce jour');
+        renderEventView(); render();
+      });
+    }
+    if (act !== 'move-ok') return;
+    const target = fromInputs($('#workMoveDate').value || key);
+    if (sameDay(target, start)) return toast('Choisis une autre date.');
+    const label = fmt(target, { weekday: 'long', day: 'numeric', month: 'long' });
+    await withBusy(btn, async () => {
+      if (workMove === 'remote') {
+        const dates = new Set(state.remote.me);
+        dates.delete(key); dates.add(toDateInput(target));
+        await store.setRemoteDays([...dates].sort());
+        state.remote = await store.getRemoteDays();
+        toast(`Télétravail déplacé au ${label}`);
+      } else {
+        const other = await workSlotOn(target);
+        const dur = new Date(ev.end_at) - new Date(ev.start_at);
+        if (other && other.ev.id !== ev.id) {
+          // Échange : la permanence prend la place du créneau de ce jour-là, et inversement.
+          const otherDur = other.end - other.start;
+          await replaceOccurrence(other.ev, other.start, { title: ev.title, dur });
+          const fresh = (await store.listEvents(start, addDays(start, 1))).find(e => e.id === ev.id) || ev;
+          await replaceOccurrence(fresh, start, { title: other.ev.title, dur: otherDur });
+          toast(`Permanence échangée avec le ${label}`);
+        } else {
+          const s = new Date(target.getFullYear(), target.getMonth(), target.getDate(), start.getHours(), start.getMinutes());
+          await replaceOccurrence(ev, start, { start: s });
+          toast(`Permanence déplacée au ${label}`);
+        }
+      }
+      workMove = null;
+      evViewDlg.close();
+      load();
+    });
   }
 
   // Supprimer depuis la fiche : directement pour un événement simple ; pour une série
@@ -2501,6 +2596,10 @@
     };
     $('#evViewCopy').onclick = duplicateEvent;
     $('#evViewDelete').onclick = () => deleteFromView();
+    $('#evViewBody').addEventListener('click', e => {
+      const b = e.target.closest('[data-work]');
+      if (b) onWorkTool(b.dataset.work);
+    });
     $('#evViewDelChoice').onclick = e => {
       const b = e.target.closest('[data-del]');
       if (!b) return;
