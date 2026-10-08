@@ -1,26 +1,6 @@
 {
- "updated_at": "2026-10-04T11:16:31.997Z",
+ "updated_at": "2026-10-08T12:14:12.505Z",
  "events": [
-  {
-   "id": "f1-2026-12",
-   "kind": "f1",
-   "title": "F1 · Dutch Grand Prix",
-   "start_at": "2026-08-23T13:00:00.000Z",
-   "end_at": "2026-08-23T15:00:00.000Z",
-   "all_day": false,
-   "location": "Circuit Park Zandvoort, Zandvoort, Netherlands",
-   "detail": "Manche 12 · Dutch Grand Prix\nQualifications : samedi 16:00\nCourse sprint : samedi 12:00"
-  },
-  {
-   "id": "barca-401882913",
-   "kind": "barca",
-   "title": "Elche – FC Barcelone (0-5)",
-   "start_at": "2026-08-23T19:30:00.000Z",
-   "end_at": "2026-08-23T21:30:00.000Z",
-   "all_day": false,
-   "location": "Estadio Martínez Valero",
-   "detail": "LaLiga"
-  },
   {
    "id": "barca-401882921",
    "kind": "barca",
