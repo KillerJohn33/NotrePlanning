@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v50';
+  const APP_VERSION = 'v51';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -592,6 +592,104 @@
     } else if (!dlg.open) dlg.showModal();
   }
 
+  /* Barre de navigation du téléphone : « verre liquide » (reprise de Mon Butin) -----------
+     Capsule translucide ; l'onglet actif est en couleur d'accent, posé sur un indicateur
+     unique. Au toucher, l'indicateur se soulève en goutte de verre, suit le doigt en
+     s'étirant selon la vitesse, puis se repose sur l'onglet choisi (au lever du doigt).
+     Toucher l'onglet déjà actif remonte en haut. Ordinateur : barre habituelle. */
+  function activateTab(b) {
+    if (b.id === 'settingsBtn') return openSettings();
+    const view = b.dataset.view;
+    if (view !== state.view) return setView(view);
+    const main = $('#main');
+    main.scrollTo({ top: 0, behavior: 'smooth' });
+    $('.wk-scroll', main)?.scrollTo({ top: 7 * HOUR_PX - 8, behavior: 'smooth' });
+    if (view === 'month') goToMonth(new Date());
+  }
+  const glassNav = (() => {
+    let ind = null, drag = null, raf = 0, swallowUntil = 0;
+    const cap = () => $('#viewSeg');
+    const tabs = () => $$('#viewSeg .tab');
+    const active = () => narrowMq.matches;
+    const tabAt = x => {
+      const ts = tabs();
+      return ts.find(t => { const r = t.getBoundingClientRect(); return x >= r.left && x <= r.right; })
+        || (x < ts[0].getBoundingClientRect().left ? ts[0] : ts[ts.length - 1]);
+    };
+    function ensure() {
+      if (!active()) { ind?.remove(); ind = null; return null; }
+      if (!ind) { ind = document.createElement('span'); ind.className = 'nav-ind'; ind.setAttribute('aria-hidden', 'true'); cap().prepend(ind); }
+      return ind;
+    }
+    function setX(x, w, sx = 1, sy = 1) {
+      const r = cap().getBoundingClientRect();
+      const left = Math.max(r.left + 2, Math.min(r.right - 2 - w, x - w / 2)) - r.left;
+      ind.style.width = `${w}px`;
+      ind.style.transform = `translate3d(${left}px,0,0) scale(${sx},${sy})`;
+    }
+    function sync(animate = true) {
+      if (!ensure() || drag) return;
+      const on = $('#viewSeg .tab[aria-pressed="true"]');
+      ind.style.opacity = on ? '1' : '0';
+      if (!on) return;
+      const r = on.getBoundingClientRect();
+      if (!animate) ind.classList.add('no-anim');
+      setX(r.left + r.width / 2, r.width);
+      if (!animate) { void ind.offsetWidth; ind.classList.remove('no-anim'); }
+    }
+    function loop() {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (!drag) return;
+        // Étirement dans le sens du mouvement, proportionnel à la vitesse (effet loupe léger).
+        const st = Math.min(Math.abs(drag.v) * 0.9, 0.38);
+        setX(drag.x, drag.w, 1.08 + st, 1.08 - st * 0.45);
+        drag.v *= 0.82;
+        loop();
+      });
+    }
+    function end(e, cancel) {
+      if (!drag) return;
+      const t = cancel ? null : (drag.moved ? tabAt(e.clientX) : drag.over);
+      drag = null;
+      cancelAnimationFrame(raf);
+      tabs().forEach(x => x.classList.remove('ind-over'));
+      ind?.classList.remove('lift');
+      swallowUntil = Date.now() + 500; // le « click » qui suit le toucher est ignoré
+      if (t) activateTab(t);
+      requestAnimationFrame(() => sync(true));
+    }
+    return {
+      sync,
+      swallowClick: () => Date.now() < swallowUntil,
+      init() {
+        cap().addEventListener('pointerdown', e => {
+          const tab = e.target.closest('.tab');
+          if (!tab || e.pointerType === 'mouse' || !ensure()) return;
+          const on = $('#viewSeg .tab[aria-pressed="true"]');
+          if (on) ind.style.opacity = '1';
+          drag = { x: e.clientX, lastX: e.clientX, t: performance.now(), v: 0, w: tab.getBoundingClientRect().width, over: tab, moved: false, start: e.clientX };
+          ind.classList.add('lift');
+          tab.classList.add('ind-over');
+          try { cap().setPointerCapture(e.pointerId); } catch { /* ignoré */ }
+          loop();
+        });
+        cap().addEventListener('pointermove', e => {
+          if (!drag) return;
+          const now = performance.now(), dt = Math.max(8, now - drag.t);
+          drag.v = (e.clientX - drag.lastX) / dt; drag.lastX = e.clientX; drag.t = now; drag.x = e.clientX;
+          if (Math.abs(e.clientX - drag.start) > 6) drag.moved = true;
+          const t = tabAt(e.clientX);
+          if (t !== drag.over) { drag.over = t; tabs().forEach(x => x.classList.toggle('ind-over', x === t)); }
+        });
+        cap().addEventListener('pointerup', e => end(e, false));
+        cap().addEventListener('pointercancel', e => end(e, true));
+        addEventListener('resize', () => sync(false));
+        narrowMq.addEventListener('change', () => sync(false));
+      },
+    };
+  })();
+
   /* Rendu ------------------------------------------------------------------------- */
   function render() {
     if (!state.range) return;
@@ -621,6 +719,7 @@
     $('#period').textContent = label;
 
     $$('#viewSeg [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
+    requestAnimationFrame(() => glassNav.sync(true));
     renderWorkAlert();
     $$('#catChips [data-cat]').forEach(b => b.setAttribute('aria-pressed', String(!!state.cats[b.dataset.cat])));
     // Bouton « Filtres » : indique combien de types sont masqués.
@@ -2449,7 +2548,11 @@
       monthTick = true;
       requestAnimationFrame(() => { monthTick = false; onMonthScroll(); });
     }, { passive: true });
-    $('#viewSeg').onclick = e => { const b = e.target.closest('[data-view]'); if (b) setView(b.dataset.view); };
+    $('#viewSeg').onclick = e => {
+      const b = e.target.closest('.tab');
+      if (!b || glassNav.swallowClick()) return; // au doigt, l'onglet est choisi au lever (voir glassNav)
+      activateTab(b);
+    };
     $('#whoSeg').onclick = e => {
       const b = e.target.closest('[data-who]');
       if (!b) return;
@@ -2480,7 +2583,7 @@
       const b = e.target.closest('[data-dial]');
       if (b) runDial(b.dataset.dial);
     };
-    $('#settingsBtn').onclick = openSettings;
+    glassNav.init();
 
     $('#main').addEventListener('submit', onListAdd);
     $('#main').addEventListener('click', e => {
