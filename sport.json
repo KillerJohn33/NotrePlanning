@@ -1,16 +1,6 @@
 {
- "updated_at": "2026-10-11T11:35:59.123Z",
+ "updated_at": "2026-10-12T13:32:05.534Z",
  "events": [
-  {
-   "id": "barca-401882921",
-   "kind": "barca",
-   "title": "FC Barcelone – Athletic Club (2-0)",
-   "start_at": "2026-08-27T19:00:00.000Z",
-   "end_at": "2026-08-27T21:00:00.000Z",
-   "all_day": false,
-   "location": "Spotify Camp Nou",
-   "detail": "LaLiga"
-  },
   {
    "id": "barca-401882903",
    "kind": "barca",
@@ -227,7 +217,7 @@
    "title": "Atlético Madrid – FC Barcelone",
    "start_at": "2026-11-08T20:00:00.000Z",
    "end_at": "2026-11-08T22:00:00.000Z",
-   "all_day": true,
+   "all_day": false,
    "location": "Riyadh Air Metropolitano",
    "detail": "LaLiga"
   },
