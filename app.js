@@ -3,7 +3,7 @@
   'use strict';
 
   // Même numéro que CACHE dans sw.js, à changer à chaque publication.
-  const APP_VERSION = 'v51';
+  const APP_VERSION = 'v52';
   const store = window.PlanningStore;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1866,6 +1866,7 @@
               .map(([v, l]) => `<option value="${v}"${Number(p.reminderMin) === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
           </label>
           <label class="check"><input type="checkbox" name="partner" ${p.partner ? 'checked' : ''}> Quand ${esc(partner)} ajoute ou modifie un événement commun</label>
+          <label class="check"><input type="checkbox" name="lists" ${p.lists ? 'checked' : ''}> Quand ${esc(partner)} ajoute quelque chose aux courses ou aux tâches</label>
           <label class="check"><input type="checkbox" name="morning" ${p.morning ? 'checked' : ''}> Résumé de ma journée à 7h</label>
           <div><button class="btn primary">Enregistrer mes choix</button></div>
         </form>`;
@@ -2158,7 +2159,7 @@
       await withBusy($('button:not([type])', form), async () => {
         await store.updateMe({ notif: {
           reminders: f.reminders.checked, reminderMin: Number(f.reminderMin.value),
-          partner: f.partner.checked, morning: f.morning.checked,
+          partner: f.partner.checked, morning: f.morning.checked, lists: f.lists.checked,
         } });
         await loadProfiles();
         toast('Préférences de notifications enregistrées');

@@ -2,10 +2,11 @@
    Lancé toutes les 10 min par .github/workflows/notifications.yml, avec TZ=Europe/Paris
    (les dates « locales » ci-dessous sont donc à l'heure de Paris).
 
-   Trois types, selon les préférences de chacun (users/{uid}.notif) :
+   Types, selon les préférences de chacun (users/{uid}.notif) :
    - reminders   : rappel `reminderMin` minutes avant ses rendez-vous perso et communs ;
    - partner     : quand l'autre ajoute ou modifie un événement commun ;
-   - morning     : résumé de la journée à 7h.
+   - morning     : résumé de la journée à 7h ;
+   - lists       : quand l'autre ajoute un article aux courses ou une tâche.
    Les notifications partent vers chaque appareil abonné (pushSubs), en Web Push (VAPID).
    Pour ne rien envoyer deux fois, notifMeta/state mémorise le dernier passage. */
 'use strict';
@@ -156,6 +157,33 @@ async function main() {
       title: `${editor.display_name || 'Ton/ta partenaire'} a ${added ? 'ajouté' : 'modifié'} un événement commun`,
       body: `${ev.title} — ${fmtDay(start)}${ev.all_day ? '' : ` à ${fmtTime(start)}`}`,
       tag: `commun-${ev.id}`,
+    });
+  }
+
+  // 2 bis. L'autre a ajouté des articles aux courses ou des tâches (regroupés par liste).
+  const added = await db.collection('listItems')
+    .where('created_at', '>', admin.firestore.Timestamp.fromDate(last))
+    .where('created_at', '<=', admin.firestore.Timestamp.fromDate(now)).get();
+  const LIST_LABEL = { courses: 'aux courses', taches: 'aux tâches' };
+  const byList = new Map(); // « destinataire|liste » -> { other, author, list, items }
+  for (const d of added.docs) {
+    const it = d.data();
+    const author = users.get(it.owner_id);
+    const other = author && partnerOf(author);
+    if (!other || !wants(other, 'lists') || !LIST_LABEL[it.list]) continue;
+    const key = `${other.id}|${it.list}`;
+    if (!byList.has(key)) byList.set(key, { other, author, list: it.list, items: [] });
+    byList.get(key).items.push(it);
+  }
+  for (const { other, author, list, items } of byList.values()) {
+    const forMe = items.some(i => i.assignee === other.id);
+    const lines = items.slice(0, 4).map(i => `• ${i.text}${i.assignee === other.id ? ' (pour toi)' : ''}`);
+    if (items.length > 4) lines.push(`• … et ${items.length - 4} autre(s)`);
+    outbox.push({
+      uid: other.id,
+      title: `${author.display_name || 'Ton/ta partenaire'} a ajouté ${items.length > 1 ? `${items.length} éléments` : 'un élément'} ${LIST_LABEL[list]}${forMe ? ' 📌' : ''}`,
+      body: lines.join('\n'),
+      tag: `liste-${list}-${now.getTime()}`,
     });
   }
 
