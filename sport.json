@@ -1,16 +1,6 @@
 {
- "updated_at": "2026-10-14T10:36:22.235Z",
+ "updated_at": "2026-10-16T10:06:01.101Z",
  "events": [
-  {
-   "id": "barca-401882903",
-   "kind": "barca",
-   "title": "FC Barcelone – Rayo Vallecano (5-2)",
-   "start_at": "2026-08-31T19:30:00.000Z",
-   "end_at": "2026-08-31T21:30:00.000Z",
-   "all_day": false,
-   "location": "Spotify Camp Nou",
-   "detail": "LaLiga"
-  },
   {
    "id": "f1-2026-13",
    "kind": "f1",
@@ -135,8 +125,8 @@
    "id": "barca-401882846",
    "kind": "barca",
    "title": "Real Betis – FC Barcelone",
-   "start_at": "2026-10-17T16:30:00.000Z",
-   "end_at": "2026-10-17T18:30:00.000Z",
+   "start_at": "2026-10-17T16:00:00.000Z",
+   "end_at": "2026-10-17T18:00:00.000Z",
    "all_day": false,
    "location": "Estadio La Cartuja",
    "detail": "LaLiga"
