@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-16T10:06:01.101Z",
+ "updated_at": "2026-10-18T09:53:28.511Z",
  "events": [
   {
    "id": "f1-2026-13",
@@ -124,9 +124,9 @@
   {
    "id": "barca-401882846",
    "kind": "barca",
-   "title": "Real Betis – FC Barcelone",
-   "start_at": "2026-10-17T16:00:00.000Z",
-   "end_at": "2026-10-17T18:00:00.000Z",
+   "title": "Real Betis – FC Barcelone (2-5)",
+   "start_at": "2026-10-17T16:30:00.000Z",
+   "end_at": "2026-10-17T18:30:00.000Z",
    "all_day": false,
    "location": "Estadio La Cartuja",
    "detail": "LaLiga"
