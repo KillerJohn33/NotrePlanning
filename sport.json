@@ -1,26 +1,6 @@
 {
- "updated_at": "2026-10-21T10:35:00.806Z",
+ "updated_at": "2026-10-22T10:38:15.920Z",
  "events": [
-  {
-   "id": "f1-2026-13",
-   "kind": "f1",
-   "title": "F1 · Italian Grand Prix",
-   "start_at": "2026-09-06T13:00:00.000Z",
-   "end_at": "2026-09-06T15:00:00.000Z",
-   "all_day": false,
-   "location": "Autodromo Nazionale di Monza, Monza, Italy",
-   "detail": "Manche 13 · Italian Grand Prix\nQualifications : samedi 16:00"
-  },
-  {
-   "id": "barca-401882888",
-   "kind": "barca",
-   "title": "Valencia – FC Barcelone (0-5)",
-   "start_at": "2026-09-06T14:15:00.000Z",
-   "end_at": "2026-09-06T16:15:00.000Z",
-   "all_day": false,
-   "location": "Mestalla Stadium",
-   "detail": "LaLiga"
-  },
   {
    "id": "barca-401915424",
    "kind": "barca",
@@ -225,9 +205,9 @@
    "id": "barca-401882804",
    "kind": "barca",
    "title": "FC Barcelone – Villarreal",
-   "start_at": "2026-11-22T20:00:00.000Z",
-   "end_at": "2026-11-22T22:00:00.000Z",
-   "all_day": true,
+   "start_at": "2026-11-22T13:00:00.000Z",
+   "end_at": "2026-11-22T15:00:00.000Z",
+   "all_day": false,
    "location": "Spotify Camp Nou",
    "detail": "LaLiga"
   },
