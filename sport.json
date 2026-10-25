@@ -1,16 +1,6 @@
 {
- "updated_at": "2026-10-22T10:38:15.920Z",
+ "updated_at": "2026-10-25T10:08:21.096Z",
  "events": [
-  {
-   "id": "barca-401915424",
-   "kind": "barca",
-   "title": "FC Barcelone – Feyenoord Rotterdam (5-1)",
-   "start_at": "2026-09-09T16:45:00.000Z",
-   "end_at": "2026-09-09T18:45:00.000Z",
-   "all_day": false,
-   "location": "Spotify Camp Nou",
-   "detail": "Ligue des champions"
-  },
   {
    "id": "f1-2026-14",
    "kind": "f1",
