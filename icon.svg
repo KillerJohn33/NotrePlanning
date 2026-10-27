@@ -1,49 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Notre Planning : page du jour partagée en deux (bleu / rose framboise), cœur bicolore, fond violet -->
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#7189ff"/>
-      <stop offset="1" stop-color="#3d52d6"/>
-    </linearGradient>
-    <radialGradient id="shine" cx=".28" cy=".12" r=".85">
-      <stop offset="0" stop-color="#fff" stop-opacity=".42"/>
-      <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#e9edff"/>
-    </linearGradient>
-    <linearGradient id="band" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#dfe5ff"/>
-      <stop offset="1" stop-color="#c7d1ff"/>
-    </linearGradient>
-    <linearGradient id="heart" x1=".15" y1="0" x2=".85" y2="1">
-      <stop offset="0" stop-color="#c38bff"/>
-      <stop offset="1" stop-color="#7c4dff"/>
-    </linearGradient>
-    <filter id="drop" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#1b2470" flood-opacity=".38"/>
-    </filter>
-    <filter id="soft" x="-30%" y="-30%" width="160%" height="170%">
-      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#5b2bd6" flood-opacity=".35"/>
-    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a77bff"/><stop offset="1" stop-color="#6a3ae0"/></linearGradient>
+    <radialGradient id="sh" cx=".25" cy=".1" r=".9"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <clipPath id="page"><rect x="106" y="120" width="300" height="296" rx="64"/></clipPath>
+    <filter id="d" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#0b1030" flood-opacity=".35"/></filter>
   </defs>
-  <!-- Fond : squircle bleu dégradé avec reflet -->
-  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
-  <rect width="512" height="512" rx="116" fill="url(#shine)"/>
-  <!-- Calendrier en verre blanc -->
-  <g filter="url(#drop)">
-    <rect x="92" y="122" width="328" height="300" rx="62" fill="url(#card)"/>
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/><rect width="512" height="512" rx="116" fill="url(#sh)"/>
+  <g filter="url(#d)"><rect x="106" y="120" width="300" height="296" rx="64" fill="#fff"/></g>
+  <g clip-path="url(#page)">
+    <path d="M106 120h300L106 416z" fill="#4f6bed"/>
+    <path d="M406 120v296H106z" fill="#ec4899"/>
   </g>
-  <path d="M92 184a62 62 0 0 1 62-62h204a62 62 0 0 1 62 62v20H92z" fill="url(#band)"/>
-  <rect x="92.5" y="122.5" width="327" height="299" rx="61.5" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3"/>
-  <!-- Anneaux -->
-  <rect x="164" y="84" width="32" height="80" rx="16" fill="#fff"/>
-  <rect x="316" y="84" width="32" height="80" rx="16" fill="#fff"/>
-  <rect x="164" y="84" width="32" height="80" rx="16" fill="none" stroke="#b9c4ff" stroke-width="3"/>
-  <rect x="316" y="84" width="32" height="80" rx="16" fill="none" stroke="#b9c4ff" stroke-width="3"/>
-  <!-- Cœur -->
-  <g filter="url(#soft)">
-    <path d="M256 384c-66-42-92-82-92-116 0-30 22-51 49-51 19 0 34 10 43 26 9-16 24-26 43-26 27 0 49 21 49 51 0 34-26 74-92 116z" fill="url(#heart)"/>
-  </g>
-  <path d="M199 258c3-13 14-22 27-22" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="11" stroke-linecap="round"/>
+  <rect x="107.5" y="121.5" width="297" height="293" rx="62.5" fill="none" stroke="#ffffff" stroke-opacity=".55" stroke-width="3"/>
+  <rect x="162" y="86" width="30" height="74" rx="15" fill="#ffffff"/>
+  <rect x="320" y="86" width="30" height="74" rx="15" fill="#ffffff"/>
+  <circle cx="256" cy="268" r="78" fill="#fff"/>
+  <path d="M256 318c-38-24-52-47-52-66 0-17 13-29 28-29 11 0 19 6 24 15 5-9 13-15 24-15 15 0 28 12 28 29 0 19-14 42-52 66z" fill="#4f6bed"/>
+  <path d="M256 318c38-24 52-47 52-66 0-17-13-29-28-29-11 0-19 6-24 15z" fill="#ec4899"/>
 </svg>
