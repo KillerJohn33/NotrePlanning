@@ -1,16 +1,6 @@
 {
- "updated_at": "2026-10-29T11:44:43.449Z",
+ "updated_at": "2026-11-01T12:01:43.460Z",
  "events": [
-  {
-   "id": "barca-401882871",
-   "kind": "barca",
-   "title": "FC Barcelone – Racing Santander (7-2)",
-   "start_at": "2026-09-16T19:30:00.000Z",
-   "end_at": "2026-09-16T21:30:00.000Z",
-   "all_day": false,
-   "location": "Spotify Camp Nou",
-   "detail": "LaLiga"
-  },
   {
    "id": "barca-401882859",
    "kind": "barca",
@@ -114,7 +104,7 @@
   {
    "id": "barca-401882822",
    "kind": "barca",
-   "title": "FC Barcelone – Alavés",
+   "title": "FC Barcelone – Alavés (6-1)",
    "start_at": "2026-10-31T20:00:00.000Z",
    "end_at": "2026-10-31T22:00:00.000Z",
    "all_day": false,
