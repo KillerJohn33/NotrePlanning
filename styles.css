@@ -1098,3 +1098,155 @@ dialog.is-closing::backdrop { animation: fade-out .17s ease-in forwards; }
 .mo-cell.is-today:not(.is-off), .mo-cell.is-today:not(.is-off):hover { background: color-mix(in srgb, var(--accent) 11%, var(--surface)); }
 .mo-cell.is-today.is-school { box-shadow: inset 0 0 0 2px var(--accent), inset 0 -5px 0 var(--school); }
 .mo-cell.is-today .mo-num { box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 45%, transparent); font-weight: 700; }
+
+/* === Thème « Brume » : verre liquide façon iOS (verre givré doux, fond à peine teinté) ===
+   Variables --g-* : fond, barres, cartes, feuilles, contrôles ; clair et sombre. */
+:root {
+  --g-ctl-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(15,23,42,.06), 0 4px 12px -6px rgba(15,23,42,.12);
+  --g-card-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 1px 2px rgba(15,23,42,.04), 0 8px 24px -14px rgba(15,23,42,.18);
+  --g-spec: rgba(255,255,255,.9);
+  --g-scrim: rgba(20,24,40,.3);
+  --g-base: #eef1f8;
+  --g-wall: radial-gradient(90% 55% at 0% 0%, rgba(79,107,237,.16), transparent 70%), radial-gradient(80% 50% at 100% 35%, rgba(236,72,153,.10), transparent 70%), radial-gradient(90% 50% at 40% 100%, rgba(45,212,191,.10), transparent 70%);
+  --g-bar: rgba(248,250,255,.66);
+  --g-sticky: rgba(240,243,250,.6);
+  --g-card: rgba(255,255,255,.62);
+  --g-sheet: rgba(250,251,255,.78);
+  --g-fill: rgba(120,130,160,.10);
+  --g-hair: rgba(60,70,100,.10);
+  --g-rim: rgba(255,255,255,.75);
+  --g-ctl: rgba(255,255,255,.6);
+  --g-ctl-strong: rgba(255,255,255,.95);
+  --g-input: rgba(255,255,255,.55);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+  --g-ctl-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 1px 2px rgba(0,0,0,.4);
+  --g-card-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 10px 30px -16px rgba(0,0,0,.7);
+  --g-spec: rgba(255,255,255,.16);
+  --g-scrim: rgba(0,0,0,.45);
+  --g-base: #0c0e14;
+  --g-wall: radial-gradient(90% 55% at 0% 0%, rgba(79,107,237,.20), transparent 70%), radial-gradient(80% 50% at 100% 40%, rgba(236,72,153,.10), transparent 70%), radial-gradient(90% 50% at 40% 100%, rgba(45,212,191,.08), transparent 70%);
+  --g-bar: rgba(22,25,34,.6);
+  --g-sticky: rgba(16,18,26,.55);
+  --g-card: rgba(255,255,255,.055);
+  --g-sheet: rgba(30,33,44,.72);
+  --g-fill: rgba(255,255,255,.07);
+  --g-hair: rgba(255,255,255,.08);
+  --g-rim: rgba(255,255,255,.12);
+  --g-ctl: rgba(255,255,255,.08);
+  --g-ctl-strong: rgba(255,255,255,.16);
+  --g-input: rgba(255,255,255,.05);
+  }
+}
+:root[data-theme="dark"] {
+  --g-ctl-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 1px 2px rgba(0,0,0,.4);
+  --g-card-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 10px 30px -16px rgba(0,0,0,.7);
+  --g-spec: rgba(255,255,255,.16);
+  --g-scrim: rgba(0,0,0,.45);
+  --g-base: #0c0e14;
+  --g-wall: radial-gradient(90% 55% at 0% 0%, rgba(79,107,237,.20), transparent 70%), radial-gradient(80% 50% at 100% 40%, rgba(236,72,153,.10), transparent 70%), radial-gradient(90% 50% at 40% 100%, rgba(45,212,191,.08), transparent 70%);
+  --g-bar: rgba(22,25,34,.6);
+  --g-sticky: rgba(16,18,26,.55);
+  --g-card: rgba(255,255,255,.055);
+  --g-sheet: rgba(30,33,44,.72);
+  --g-fill: rgba(255,255,255,.07);
+  --g-hair: rgba(255,255,255,.08);
+  --g-rim: rgba(255,255,255,.12);
+  --g-ctl: rgba(255,255,255,.08);
+  --g-ctl-strong: rgba(255,255,255,.16);
+  --g-input: rgba(255,255,255,.05);
+}
+/* ===== Couche « verre liquide » commune ===== */
+:root {
+  --surface: var(--g-card); --surface-2: var(--g-fill); --border: var(--g-hair); --bg: var(--g-base);
+  --radius: var(--g-radius, 18px); --track: var(--g-fill);
+  --offme-bg: color-mix(in srgb, var(--off-me, #3b82f6) 20%, transparent);
+  --offother-bg: color-mix(in srgb, var(--off-other, #ec4899) 20%, transparent);
+  --glass-bg: var(--g-bar);
+}
+html, body { background-color: var(--g-base); }
+body { background-image: var(--g-wall); background-attachment: fixed; background-size: 100% 100%; }
+.topbar, .filters {
+  background: var(--g-bar); border-bottom: 0;
+  -webkit-backdrop-filter: blur(28px) saturate(180%); backdrop-filter: blur(28px) saturate(180%);
+}
+.filters { box-shadow: inset 0 -.5px 0 var(--g-hair); }
+.demo-banner { background: var(--g-fill); }
+.nav h1 { font-weight: 700; letter-spacing: -.01em; }
+/* Contrôles : pastilles de verre avec reflet */
+.btn, .icon-btn, .chip {
+  background: var(--g-ctl); border: .5px solid var(--g-rim);
+  box-shadow: var(--g-ctl-shadow);
+  -webkit-backdrop-filter: blur(14px) saturate(170%); backdrop-filter: blur(14px) saturate(170%);
+}
+.btn.primary {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, #fff), var(--accent));
+  border-color: color-mix(in srgb, var(--accent) 70%, #fff);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 6px 16px -6px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.btn.danger { color: var(--danger); }
+.seg { background: var(--g-fill); box-shadow: inset 0 0 0 .5px var(--g-hair); }
+.seg button[aria-pressed="true"], .seg label:has(input:checked) {
+  background: var(--g-ctl-strong); border-color: var(--g-rim); box-shadow: var(--g-ctl-shadow);
+}
+.chip[data-cat][aria-pressed="true"] { box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
+.field input, .field select, .field textarea, .input {
+  background: var(--g-input); border: .5px solid var(--g-hair); border-radius: 12px;
+}
+/* Cartes */
+.ag-ev, .li-item, .set-group, .today-card {
+  background: var(--g-card); border: .5px solid var(--g-rim); border-radius: var(--radius);
+  box-shadow: var(--g-card-shadow);
+}
+.ag-ev:hover { box-shadow: var(--g-card-shadow); }
+.ag-bar { border-radius: 3px; }
+.ag-date {
+  background: transparent; margin: 0 -16px; padding-left: 18px; padding-right: 18px;
+  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+  background: var(--g-sticky);
+}
+/* Mois : grille posée sur une plaque de verre */
+.mo-head, .wk-sticky {
+  background: var(--g-bar); border-bottom: 0; box-shadow: inset 0 -.5px 0 var(--g-hair);
+  -webkit-backdrop-filter: blur(28px) saturate(180%); backdrop-filter: blur(28px) saturate(180%);
+}
+.mo-title {
+  background: var(--g-sticky); border-bottom: 0; letter-spacing: -.01em;
+  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+}
+.mo-grid {
+  margin: 0 8px 6px; border-radius: 22px; overflow: hidden;
+  background: var(--g-card); border: .5px solid var(--g-rim); box-shadow: var(--g-card-shadow);
+}
+.mo-cell, .mo-cell:hover { background: transparent; border-color: var(--g-hair); }
+.mo-cell.is-blank, .mo-cell.is-blank:hover { background: var(--g-fill); }
+.mo-cell.is-today:not(.is-off), .mo-cell.is-today:not(.is-off):hover { background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.mo-cell.is-today { border-radius: 12px; }
+/* Fenêtres : feuilles de verre */
+dialog {
+  background: var(--g-sheet); border-radius: 28px;
+  border: .5px solid var(--g-rim);
+  -webkit-backdrop-filter: blur(40px) saturate(190%); backdrop-filter: blur(40px) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--g-spec), 0 30px 80px -20px rgba(0,0,0,.45);
+}
+@media (max-width: 700px) { dialog { border-radius: 28px; width: calc(100vw - 16px); } }
+dialog::backdrop { background: var(--g-scrim); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.dlg-foot { background: transparent; border-top: .5px solid var(--g-hair); }
+/* Barre du bas */
+.fab {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 0 0 .5px rgba(255,255,255,.35), 0 10px 24px -8px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.toast { -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); }
+/* En-têtes collants : assez opaques pour que rien ne transparaisse en défilant */
+.mo-head, .mo-title, .ag-date, .wk-sticky { background: color-mix(in srgb, var(--g-base) 95%, transparent); }
+/* Semaine : colonne des heures et coin assortis aux en-têtes */
+.wk-hours, .wk-corner { background: var(--g-base); }
+/* Le menu des filtres passe au-dessus du contenu (la barre floutée crée son propre empilement) */
+.filters { position: relative; z-index: 20; }
+/* Menus et carte de connexion : verre */
+.filter-pop, .auth-card {
+  background: var(--g-sheet); border: .5px solid var(--g-rim); border-radius: 20px;
+  -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%);
+}
