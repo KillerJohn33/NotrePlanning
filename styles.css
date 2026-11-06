@@ -1271,3 +1271,11 @@ dialog::backdrop { background: var(--g-scrim); -webkit-backdrop-filter: blur(6px
 .mo-head, .mo-title { background: var(--g-head); }
 .mo-title { box-shadow: inset 0 -.5px 0 var(--g-hair); }
 .mo-cell.is-today { z-index: auto; }
+
+/* Aucun glissement latéral de l'écran (comme une app iOS) : l'en-tête des jours de l'agenda
+   reste dans la largeur, et seules les vues qui défilent verticalement acceptent le doigt
+   dans ce sens (la semaine garde son défilement horizontal jour par jour). */
+.ag-date { margin-left: 0; margin-right: 0; padding-left: 2px; padding-right: 2px; }
+.main:not(.view-week) { overflow-x: hidden; overscroll-behavior-x: none; touch-action: pan-y; }
+/* … et forme un bandeau d'un bord à l'autre de l'écran (l'ombre ne crée aucun débordement) */
+.ag-date { background: var(--g-head); box-shadow: 0 0 0 100vmax var(--g-head); clip-path: inset(0 -100vmax); }
