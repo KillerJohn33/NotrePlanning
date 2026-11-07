@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-04T13:15:51.223Z",
+ "updated_at": "2026-11-07T11:55:12.368Z",
  "events": [
   {
    "id": "f1-2026-15",
@@ -172,6 +172,16 @@
    "detail": "Ligue des champions"
   },
   {
+   "id": "barca-401882794",
+   "kind": "barca",
+   "title": "Deportivo – FC Barcelone",
+   "start_at": "2026-11-29T15:15:00.000Z",
+   "end_at": "2026-11-29T17:15:00.000Z",
+   "all_day": false,
+   "location": "Riazor",
+   "detail": "LaLiga"
+  },
+  {
    "id": "f1-2026-22",
    "kind": "f1",
    "title": "F1 · Qatar Grand Prix",
@@ -182,13 +192,13 @@
    "detail": "Manche 22 · Qatar Grand Prix\nQualifications : samedi 19:00"
   },
   {
-   "id": "barca-401882794",
+   "id": "barca-401882700",
    "kind": "barca",
-   "title": "Deportivo – FC Barcelone",
-   "start_at": "2026-11-29T20:00:00.000Z",
-   "end_at": "2026-11-29T22:00:00.000Z",
-   "all_day": true,
-   "location": "Riazor",
+   "title": "FC Barcelone – Atlético Madrid",
+   "start_at": "2026-12-02T20:30:00.000Z",
+   "end_at": "2026-12-02T22:30:00.000Z",
+   "all_day": false,
+   "location": "Spotify Camp Nou",
    "detail": "LaLiga"
   },
   {
@@ -320,16 +330,6 @@
    "all_day": false,
    "location": "Şükrü Saracoğlu Stadium",
    "detail": "Supercoupe d’Espagne"
-  },
-  {
-   "id": "barca-401882700",
-   "kind": "barca",
-   "title": "FC Barcelone – Atlético Madrid",
-   "start_at": "2027-02-07T20:00:00.000Z",
-   "end_at": "2027-02-07T22:00:00.000Z",
-   "all_day": true,
-   "location": "Spotify Camp Nou",
-   "detail": "LaLiga"
   },
   {
    "id": "barca-401882687",
