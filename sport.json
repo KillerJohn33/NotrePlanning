@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-10T13:45:58.301Z",
+ "updated_at": "2026-11-16T13:59:41.373Z",
  "events": [
   {
    "id": "f1-2026-16",
@@ -192,6 +192,16 @@
    "detail": "LaLiga"
   },
   {
+   "id": "barca-401882783",
+   "kind": "barca",
+   "title": "FC Barcelone – Celta Vigo",
+   "start_at": "2026-12-05T20:00:00.000Z",
+   "end_at": "2026-12-05T22:00:00.000Z",
+   "all_day": false,
+   "location": "Spotify Camp Nou",
+   "detail": "LaLiga"
+  },
+  {
    "id": "f1-2026-23",
    "kind": "f1",
    "title": "F1 · Abu Dhabi Grand Prix",
@@ -200,16 +210,6 @@
    "all_day": false,
    "location": "Yas Marina Circuit, Abu Dhabi, UAE",
    "detail": "Manche 23 · Abu Dhabi Grand Prix\nQualifications : samedi 15:00"
-  },
-  {
-   "id": "barca-401882783",
-   "kind": "barca",
-   "title": "FC Barcelone – Celta Vigo",
-   "start_at": "2026-12-06T20:00:00.000Z",
-   "end_at": "2026-12-06T22:00:00.000Z",
-   "all_day": true,
-   "location": "Spotify Camp Nou",
-   "detail": "LaLiga"
   },
   {
    "id": "barca-401915285",
