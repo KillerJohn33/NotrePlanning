@@ -1,16 +1,6 @@
 {
- "updated_at": "2026-11-16T13:59:41.373Z",
+ "updated_at": "2026-11-18T14:33:12.556Z",
  "events": [
-  {
-   "id": "f1-2026-16",
-   "kind": "f1",
-   "title": "F1 · Bahrain Grand Prix in Malaysia",
-   "start_at": "2026-10-04T07:00:00.000Z",
-   "end_at": "2026-10-04T09:00:00.000Z",
-   "all_day": false,
-   "location": "Sepang International Circuit, Kuala Lumpur, Malaysia",
-   "detail": "Manche 16 · Bahrain Grand Prix in Malaysia\nQualifications : samedi 10:00"
-  },
   {
    "id": "barca-401882853",
    "kind": "barca",
