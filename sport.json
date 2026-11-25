@@ -1,26 +1,6 @@
 {
- "updated_at": "2026-11-23T16:28:44.169Z",
+ "updated_at": "2026-11-25T16:03:39.844Z",
  "events": [
-  {
-   "id": "barca-401882853",
-   "kind": "barca",
-   "title": "FC Barcelone – Getafe (3-0)",
-   "start_at": "2026-10-10T16:30:00.000Z",
-   "end_at": "2026-10-10T18:30:00.000Z",
-   "all_day": false,
-   "location": "Spotify Camp Nou",
-   "detail": "LaLiga"
-  },
-  {
-   "id": "f1-2026-17",
-   "kind": "f1",
-   "title": "F1 · Singapore Grand Prix",
-   "start_at": "2026-10-11T12:00:00.000Z",
-   "end_at": "2026-10-11T14:00:00.000Z",
-   "all_day": false,
-   "location": "Marina Bay Street Circuit, Marina Bay, Singapore",
-   "detail": "Manche 17 · Singapore Grand Prix\nQualifications : samedi 15:00\nCourse sprint : samedi 11:00"
-  },
   {
    "id": "barca-401915435",
    "kind": "barca",
