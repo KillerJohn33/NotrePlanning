@@ -1,16 +1,6 @@
 {
- "updated_at": "2026-11-26T15:46:40.405Z",
+ "updated_at": "2026-11-28T14:30:40.664Z",
  "events": [
-  {
-   "id": "barca-401915435",
-   "kind": "barca",
-   "title": "Galatasaray – FC Barcelone (1-4)",
-   "start_at": "2026-10-13T19:00:00.000Z",
-   "end_at": "2026-10-13T21:00:00.000Z",
-   "all_day": false,
-   "location": "RAMS Park",
-   "detail": "Ligue des champions"
-  },
   {
    "id": "barca-401882846",
    "kind": "barca",
